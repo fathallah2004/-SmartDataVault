@@ -13,11 +13,10 @@ class DashboardController extends Controller
 
     public function __construct()
     {
-        // Vérifier si PHPWord est disponible
         $this->phpwordAvailable = class_exists('PhpOffice\PhpWord\IOFactory');
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
         
@@ -27,9 +26,38 @@ class DashboardController extends Controller
             'last_upload' => $user->last_upload_at ? $user->last_upload_at->diffForHumans() : 'Jamais'
         ];
 
-        $files = EncryptedFile::where('user_id', $user->id)
-                            ->orderBy('created_at', 'desc')
-                            ->paginate(10);
+        // Query de base pour les fichiers
+        $query = EncryptedFile::where('user_id', $user->id);
+
+        // Filtre par recherche (nom de fichier)
+        if ($request->has('search') && $request->search != '') {
+            $query->where('original_name', 'like', '%' . $request->search . '%');
+        }
+
+        // Filtre par algorithme
+        if ($request->has('algorithm') && $request->algorithm != '') {
+            $query->where('encryption_method', $request->algorithm);
+        }
+
+        // Filtre par date
+        if ($request->has('date_filter') && $request->date_filter != '') {
+            switch($request->date_filter) {
+                case 'today':
+                    $query->whereDate('created_at', today());
+                    break;
+                case 'week':
+                    $query->where('created_at', '>=', now()->subWeek());
+                    break;
+                case 'month':
+                    $query->where('created_at', '>=', now()->subMonth());
+                    break;
+            }
+        }
+
+        // Conservation des filtres dans la pagination
+        $files = $query->orderBy('created_at', 'desc')
+            ->paginate(10)
+            ->appends($request->except('page'));
 
         $encryptionService = new EncryptionService();
         $algorithms = $encryptionService->getAvailableAlgorithms();
@@ -51,8 +79,9 @@ class DashboardController extends Controller
         $allowedExtensions = ['txt', 'doc', 'docx', 'rtf', 'md', 'pdf'];
         
         if (!in_array($extension, $allowedExtensions)) {
+            // ❌ NOTIFICATION D'ERREUR - Format non supporté
             return redirect()->route('dashboard')
-                ->with('error', 'Formats supportés: .txt, .doc, .docx, .rtf, .md, .pdf');
+                ->with('error', '❌ Formats supportés: .txt, .doc, .docx, .rtf, .md, .pdf uniquement');
         }
 
         try {
@@ -74,8 +103,9 @@ class DashboardController extends Controller
                     if ($this->phpwordAvailable) {
                         $content = $this->extractTextFromDocx($file->path());
                     } else {
+                        // ⚠️ NOTIFICATION WARNING - PhpWord non disponible
                         return redirect()->route('dashboard')
-                            ->with('error', 'Support DOCX non disponible. Exécutez: composer require phpoffice/phpword');
+                            ->with('warning', '⚠️ Support DOCX non disponible. Exécutez: composer require phpoffice/phpword');
                     }
                     break;
 
@@ -84,14 +114,15 @@ class DashboardController extends Controller
                     break;
 
                 default:
+                    // ❌ NOTIFICATION D'ERREUR - Format non supporté
                     return redirect()->route('dashboard')
-                        ->with('error', 'Format non supporté');
+                        ->with('error', '❌ Format de fichier non supporté');
             }
 
-            // Vérification sécurisée du contenu
             if (empty($content) || (is_string($content) && trim($content) === '')) {
+                // ⚠️ NOTIFICATION WARNING - Fichier vide
                 return redirect()->route('dashboard')
-                    ->with('error', 'Aucun texte extrait - fichier vide ou protégé?');
+                    ->with('warning', '⚠️ Aucun texte extrait - Le fichier est peut-être vide ou protégé');
             }
 
             $encryptionService = new EncryptionService();
@@ -111,12 +142,14 @@ class DashboardController extends Controller
 
             Auth::user()->updateStatsAfterUpload($file->getSize());
 
+            // ✅ NOTIFICATION DE SUCCÈS - Fichier chiffré
             return redirect()->route('dashboard')
-                ->with('success', '✅ Fichier .' . $extension . ' chiffré avec ' . $encrypted['method'] . '! (' . strlen($content) . ' caractères)');
+                ->with('success', '✅ Fichier "' . $file->getClientOriginalName() . '" chiffré avec succès ! (Algorithme: ' . $encrypted['method'] . ')');
 
         } catch (\Exception $e) {
+            // ❌ NOTIFICATION D'ERREUR - Erreur d'upload
             return redirect()->route('dashboard')
-                ->with('error', '❌ Erreur: ' . $e->getMessage());
+                ->with('error', '❌ Erreur lors du chiffrement: ' . $e->getMessage());
         }
     }
 
@@ -203,29 +236,34 @@ class DashboardController extends Controller
     }
 
     public function download(EncryptedFile $file)
-{
-    if ($file->user_id !== Auth::id()) {
-        abort(403);
-    }
+    {
+        if ($file->user_id !== Auth::id()) {
+            abort(403);
+        }
 
-    $encryptionService = new EncryptionService();
-    
-    try {
-        $decryptedContent = $encryptionService->decryptText(
-            $file->encrypted_content,
-            $file->getDecryptionKey(),
-            $file->encryption_method
-        );
-    } catch (\Exception $e) {
-        return redirect()->route('dashboard')
-            ->with('error', 'Erreur déchiffrement: ' . $e->getMessage());
-    }
+        $encryptionService = new EncryptionService();
+        
+        try {
+            $decryptedContent = $encryptionService->decryptText(
+                $file->encrypted_content,
+                $file->getDecryptionKey(),
+                $file->encryption_method
+            );
 
-    // ✅ CORRECTION : Utiliser le nom original avec sa vraie extension
-    return response()->streamDownload(function () use ($decryptedContent) {
-        echo $decryptedContent;
-    }, $file->original_name); // ← Plus de '.txt' forcé
-}
+            // ℹ️ NOTIFICATION INFO (optionnelle) - Téléchargement en cours
+            // Tu peux décommenter si tu veux une notification
+            // session()->flash('info', 'ℹ️ Téléchargement du fichier "' . $file->original_name . '" en cours...');
+
+        } catch (\Exception $e) {
+            // ❌ NOTIFICATION D'ERREUR - Erreur de déchiffrement
+            return redirect()->route('dashboard')
+                ->with('error', '❌ Erreur de déchiffrement: ' . $e->getMessage());
+        }
+
+        return response()->streamDownload(function () use ($decryptedContent) {
+            echo $decryptedContent;
+        }, $file->original_name);
+    }
 
     public function destroy(EncryptedFile $file)
     {
@@ -233,22 +271,22 @@ class DashboardController extends Controller
             abort(403);
         }
 
+        // Sauvegarder le nom du fichier avant suppression
+        $fileName = $file->original_name;
+
         Auth::user()->updateStatsAfterDelete($file->file_size);
         $file->delete();
 
-        return redirect()->route('dashboard')->with('success', '🗑️ Fichier supprimé !');
+        // ✅ NOTIFICATION DE SUCCÈS - Fichier supprimé
+        return redirect()->route('dashboard')
+            ->with('success', '🗑️ Fichier "' . $fileName . '" supprimé définitivement !');
     }
 
-    /**
-     * ✅ AJOUTEZ CETTE MÉTHODE MANQUANTE :
-     * Afficher le statut de chiffrement des fichiers
-     */
     public function encryptionStatus()
     {
         $user = Auth::user();
         $files = EncryptedFile::where('user_id', $user->id)->get();
         
-        // Compter les fichiers chiffrés et non chiffrés
         $encryptedCount = $files->filter(function($file) {
             return $file->isEncrypted();
         })->count();
