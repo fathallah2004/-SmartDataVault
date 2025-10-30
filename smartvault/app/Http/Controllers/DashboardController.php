@@ -79,9 +79,8 @@ class DashboardController extends Controller
         $allowedExtensions = ['txt', 'doc', 'docx', 'rtf', 'md', 'pdf'];
         
         if (!in_array($extension, $allowedExtensions)) {
-            // ❌ NOTIFICATION D'ERREUR - Format non supporté
             return redirect()->route('dashboard')
-                ->with('error', '❌ Formats supportés: .txt, .doc, .docx, .rtf, .md, .pdf uniquement');
+                ->with('error', 'Formats supportés: .txt, .doc, .docx, .rtf, .md, .pdf');
         }
 
         try {
@@ -103,9 +102,8 @@ class DashboardController extends Controller
                     if ($this->phpwordAvailable) {
                         $content = $this->extractTextFromDocx($file->path());
                     } else {
-                        // ⚠️ NOTIFICATION WARNING - PhpWord non disponible
                         return redirect()->route('dashboard')
-                            ->with('warning', '⚠️ Support DOCX non disponible. Exécutez: composer require phpoffice/phpword');
+                            ->with('error', 'Support DOCX non disponible');
                     }
                     break;
 
@@ -114,15 +112,13 @@ class DashboardController extends Controller
                     break;
 
                 default:
-                    // ❌ NOTIFICATION D'ERREUR - Format non supporté
                     return redirect()->route('dashboard')
-                        ->with('error', '❌ Format de fichier non supporté');
+                        ->with('error', 'Format non supporté');
             }
 
             if (empty($content) || (is_string($content) && trim($content) === '')) {
-                // ⚠️ NOTIFICATION WARNING - Fichier vide
                 return redirect()->route('dashboard')
-                    ->with('warning', '⚠️ Aucun texte extrait - Le fichier est peut-être vide ou protégé');
+                    ->with('error', 'Aucun texte extrait - fichier vide ou protégé?');
             }
 
             $encryptionService = new EncryptionService();
@@ -142,14 +138,13 @@ class DashboardController extends Controller
 
             Auth::user()->updateStatsAfterUpload($file->getSize());
 
-            // ✅ NOTIFICATION DE SUCCÈS - Fichier chiffré
+            // ✅ NOTIFICATION AMÉLIORÉE
             return redirect()->route('dashboard')
-                ->with('success', '✅ Fichier "' . $file->getClientOriginalName() . '" chiffré avec succès ! (Algorithme: ' . $encrypted['method'] . ')');
+                ->with('success', 'Fichier "' . $file->getClientOriginalName() . '" chiffré avec succès ! (Algorithme: ' . $encrypted['method'] . ')');
 
         } catch (\Exception $e) {
-            // ❌ NOTIFICATION D'ERREUR - Erreur d'upload
             return redirect()->route('dashboard')
-                ->with('error', '❌ Erreur lors du chiffrement: ' . $e->getMessage());
+                ->with('error', 'Erreur: ' . $e->getMessage());
         }
     }
 
@@ -250,14 +245,9 @@ class DashboardController extends Controller
                 $file->encryption_method
             );
 
-            // ℹ️ NOTIFICATION INFO (optionnelle) - Téléchargement en cours
-            // Tu peux décommenter si tu veux une notification
-            // session()->flash('info', 'ℹ️ Téléchargement du fichier "' . $file->original_name . '" en cours...');
-
         } catch (\Exception $e) {
-            // ❌ NOTIFICATION D'ERREUR - Erreur de déchiffrement
             return redirect()->route('dashboard')
-                ->with('error', '❌ Erreur de déchiffrement: ' . $e->getMessage());
+                ->with('error', 'Erreur de déchiffrement: ' . $e->getMessage());
         }
 
         return response()->streamDownload(function () use ($decryptedContent) {
@@ -271,15 +261,14 @@ class DashboardController extends Controller
             abort(403);
         }
 
-        // Sauvegarder le nom du fichier avant suppression
-        $fileName = $file->original_name;
+        $fileName = $file->original_name; // ✅ Sauvegarder le nom avant suppression
 
         Auth::user()->updateStatsAfterDelete($file->file_size);
         $file->delete();
 
-        // ✅ NOTIFICATION DE SUCCÈS - Fichier supprimé
+        // ✅ NOTIFICATION AMÉLIORÉE
         return redirect()->route('dashboard')
-            ->with('success', '🗑️ Fichier "' . $fileName . '" supprimé définitivement !');
+            ->with('delete', 'Fichier "' . $fileName . '" supprimé définitivement !');
     }
 
     public function encryptionStatus()

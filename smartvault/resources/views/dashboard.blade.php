@@ -32,30 +32,34 @@
         }
 
         .toast-enter {
-            animation: slideInRight 0.3s ease-out;
+            animation: slideInRight 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
         }
 
         .toast-exit {
             animation: slideOutRight 0.3s ease-in;
         }
-
-        .toast-notification {
-            pointer-events: auto;
-        }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900">
     
-    <!-- Container pour les notifications toast -->
-    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-3 pointer-events-none max-w-md">
-        <!-- Les notifications seront ajoutées ici dynamiquement -->
+    <!-- ✅ Container pour les notifications toast -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-3 max-w-md">
+        <!-- Les notifications seront ajoutées ici -->
     </div>
 
-    <!-- Messages de statut Laravel convertis en toast -->
+    <!-- ✅ Notifications Laravel converties en toast -->
     @if(session('success'))
         <script>
             document.addEventListener('DOMContentLoaded', function() {
                 showToast('success', {!! json_encode(session('success')) !!});
+            });
+        </script>
+    @endif
+
+    @if(session('delete'))
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                showToast('delete', {!! json_encode(session('delete')) !!});
             });
         </script>
     @endif
@@ -68,163 +72,10 @@
         </script>
     @endif
 
-    @if(session('info'))
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                showToast('info', {!! json_encode(session('info')) !!});
-            });
-        </script>
-    @endif
-
-    @if(session('warning'))
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                showToast('warning', {!! json_encode(session('warning')) !!});
-            });
-        </script>
-    @endif
-
     <div class="flex min-h-screen">
         <!-- ===== SIDEBAR ===== -->
         <div class="w-80 flex-shrink-0">
-            <div class="sidebar bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 w-80 fixed left-0 top-0 h-screen flex flex-col z-30">
-                
-                @php
-                use App\Services\EncryptionService;
-                
-                $user = Auth::user();
-                if ($user) {
-                    $storageLimit = 100 * 1024 * 1024;
-                    $storagePercentage = $user->total_storage_used > 0 ? 
-                        min(($user->total_storage_used / $storageLimit) * 100, 100) : 0;
-                    
-                    $stats = [
-                        'total_files' => $user->total_files_encrypted,
-                        'total_storage' => $user->formatted_storage,
-                        'last_upload' => $user->last_upload_at ? $user->last_upload_at->diffForHumans() : 'Jamais',
-                        'storage_percentage' => $storagePercentage
-                    ];
-                    
-                    $encryptionService = new EncryptionService();
-                    $algorithms = $encryptionService->getAvailableAlgorithms();
-
-                    $cleanName = trim($user->name ?? '');
-                    $cleanName = preg_replace('/[^\p{L}\p{N}\s]/u', '', $cleanName);
-                    $cleanName = trim($cleanName);
-
-                    $cleanEmail = trim($user->email ?? '');
-                    $cleanEmail = preg_replace('/[^\w@\.\-]/', '', $cleanEmail);
-                } else {
-                    $stats = ['total_files' => 0, 'total_storage' => '0 bytes', 'last_upload' => 'Jamais', 'storage_percentage' => 0];
-                    $algorithms = [];
-                    $cleanName = 'Utilisateur';
-                    $cleanEmail = '';
-                }
-                @endphp
-
-                <div class="flex-1 overflow-y-auto">
-                    <!-- 1. Profile Section -->
-                    <div class="sidebar-profile px-5 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-tr-2xl shadow-md">
-                        <div class="flex items-center space-x-4 pl-4">
-                            <div class="flex-1 min-w-0 py-4">
-                                <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 truncate">{{ $cleanName }}</h3>
-                                <p class="text-base text-gray-600 dark:text-gray-400 truncate mt-1">{{ $cleanEmail }}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 2. Navigation Section -->
-                    <div class="sidebar-nav px-5 border-b mt-1 border-gray-200 dark:border-gray-700">
-                        <h4 class="text-base font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Navigation</h4>
-                        <ul class="space-y-1">
-                            <li>
-                                <a href="{{ route('dashboard') }}" class="flex items-center py-1 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all duration-200 px-2">
-                                    <i class="fas fa-home w-6 mr-3 text-lg"></i>
-                                    <span class="text-base font-medium">Vault</span>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="{{ route('encryption.test') }}" class="flex items-center py-1 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all duration-200 px-2">
-                                    <i class="fas fa-flask w-6 mr-3 text-lg"></i>
-                                    <span class="text-base font-medium">Test</span>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="{{ route('profile.edit') }}" class="flex items-center py-1 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all mb-4 duration-200 px-2">
-                                    <i class="fas fa-user w-6 mr-3 text-lg"></i>
-                                    <span class="text-base font-medium">Profile</span>
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-
-                    <!-- 3. Statistiques Section -->
-                    <div class="sidebar-stats px-5 mt-1 border-gray-200 dark:border-gray-700">
-                        <h4 class="text-base font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Statistiques</h4>
-                        <div class="space-y-[2px]">
-                            <!-- Stockage -->
-                            <div class="flex items-center justify-between p-2 rounded-xl hover:scale-[1.02] transition-all duration-300 shadow-sm">
-                                <div class="flex items-center space-x-4">
-                                    <div class="w-10 h-10 rounded-xl flex items-center justify-center">
-                                        <i class="fas fa-database text-blue-600 dark:text-blue-400 text-base"></i>
-                                    </div>
-                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Stockage</span>
-                                </div>
-                                <span class="text-sm font-bold text-gray-900 dark:text-gray-100">{{ $stats['total_storage'] }} / 100 MB</span>
-                            </div>
-
-                            <!-- Fichiers -->
-                            <div class="flex items-center justify-between p-2 rounded-xl hover:scale-[1.02] transition-all duration-300 shadow-sm">
-                                <div class="flex items-center space-x-4">
-                                    <div class="w-10 h-10 rounded-xl flex items-center justify-center">
-                                        <i class="fas fa-file text-green-600 dark:text-green-400 text-base"></i>
-                                    </div>
-                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Fichiers</span>
-                                </div>
-                                <span class="text-sm font-bold text-gray-900 dark:text-gray-100">{{ $stats['total_files'] }}</span>
-                            </div>
-
-                            <!-- Dernier upload -->
-                            <div class="flex items-center justify-between p-2 rounded-xl hover:scale-[1.02] transition-all duration-300 shadow-sm">
-                                <div class="flex items-center space-x-4">
-                                    <div class="w-10 h-10 rounded-xl flex items-center justify-center">
-                                        <i class="fas fa-clock text-purple-600 dark:text-purple-400 text-base"></i>
-                                    </div>
-                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Dernier upload</span>
-                                </div>
-                                <span class="text-sm font-bold text-gray-900 dark:text-gray-100">{{ $stats['last_upload'] }}</span>
-                            </div>
-
-                            <!-- Algorithmes -->
-                            <div class="mb-4 flex items-center justify-between p-2 rounded-xl hover:scale-[1.02] transition-all duration-300 shadow-sm">
-                                <div class="flex items-center space-x-4">
-                                    <div class="w-10 h-10 rounded-xl flex items-center justify-center">
-                                        <i class="fas fa-lock text-yellow-600 dark:text-yellow-400 text-base"></i>
-                                    </div>
-                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Algorithmes</span>
-                                </div>
-                                <span class="text-sm font-bold text-gray-900 dark:text-gray-100">{{ count($algorithms) }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 4. Info/Support + Déconnexion -->
-                <div class="sidebar-bottom p-6 space-y-2 bg-white dark:bg-gray-800">
-                    <button class="w-full flex items-center justify-center py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all duration-200 px-2 pl-3">
-                        <i class="fas fa-info-circle w-6 mr-2 text-lg"></i>
-                        <span class="text-base font-medium">Info / Support</span>
-                    </button>
-
-                    <form method="POST" action="{{ route('logout') }}" class="w-full">
-                        @csrf
-                        <button type="submit" class="w-full flex items-center justify-center py-2 text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all duration-200 px-2 pl-3">
-                            <i class="fas fa-sign-out-alt w-6 mr-2 text-lg"></i>
-                            <span class="text-base font-medium">Déconnexion</span>
-                        </button>
-                    </form>
-                </div>
-            </div>
+            @include('components.sidebar')
         </div>
 
         <!-- ===== CONTENU PRINCIPAL ===== -->
@@ -516,6 +367,10 @@
                         </label>
                         <select name="encryption_method" required 
                                 class="block w-full rounded-2xl border-2 border-gray-300 shadow-lg focus:border-blue-500 focus:ring-4 focus:ring-blue-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 py-4 px-6 transition-all duration-300 text-lg">
+                            @php
+                            $encryptionService = new App\Services\EncryptionService();
+                            $algorithms = $encryptionService->getAvailableAlgorithms();
+                            @endphp
                             @foreach($algorithms as $value => $name)
                                 <option value="{{ $value }}">{{ $name }}</option>
                             @endforeach
@@ -549,56 +404,48 @@
 
     <script>
         // ========== SYSTÈME DE NOTIFICATIONS TOAST ==========
-        
-        // Configuration des types de notifications simplifiées
-        const toastConfig = {
-            success: {
-                bg: 'bg-green-500',
-                icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                       </svg>`
-            },
-            error: {
-                bg: 'bg-red-500',
-                icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                       </svg>`
-            },
-            info: {
-                bg: 'bg-blue-500',
-                icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                       </svg>`
-            },
-            warning: {
-                bg: 'bg-orange-500',
-                icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                       </svg>`
-            }
-        };
 
-        // Fonction principale pour afficher une notification toast
-        function showToast(type, message, duration) {
-            type = type || 'info';
-            message = message || '';
-            duration = duration || 4000;
+        function showToast(type, message, duration = 4000) {
+            const toastId = 'toast-' + Date.now();
             
-            const config = toastConfig[type] || toastConfig.info;
-            const toastId = 'toast-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            let bgColor, icon;
+            
+            switch(type) {
+                case 'success':
+                    bgColor = 'bg-blue-500';
+                    icon = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>`;
+                    break;
+                case 'delete':
+                    bgColor = 'bg-red-500';
+                    icon = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                             <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>`;
+                    break;
+                case 'error':
+                    bgColor = 'bg-red-500';
+                    icon = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                            </svg>`;
+                    break;
+                default:
+                    bgColor = 'bg-gray-500';
+                    icon = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                            </svg>`;
+            }
             
             const toastHTML = `
-                <div id="${toastId}" class="toast-notification toast-enter">
-                    <div class="${config.bg} text-white px-4 py-3 rounded-lg shadow-lg flex items-center space-x-3">
+                <div id="${toastId}" class="toast-enter">
+                    <div class="${bgColor} text-white px-5 py-3.5 rounded-xl shadow-2xl flex items-center gap-3 min-w-[320px] max-w-md border-2 border-white/20">
                         <div class="flex-shrink-0">
-                            ${config.icon}
+                            ${icon}
                         </div>
-                        <div class="flex-1 text-sm font-medium">
-                            ${message}
-                        </div>
-                        <button onclick="closeToast('${toastId}')" class="flex-shrink-0 hover:bg-white/20 rounded p-1 transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        <span class="flex-1 font-medium text-sm leading-tight">${message}</span>
+                        <button onclick="closeToast('${toastId}')" class="flex-shrink-0 hover:bg-white/20 rounded-lg p-1.5 transition-colors">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
                             </svg>
                         </button>
                     </div>
@@ -608,32 +455,19 @@
             const container = document.getElementById('toastContainer');
             container.insertAdjacentHTML('beforeend', toastHTML);
             
-            setTimeout(() => {
-                closeToast(toastId);
-            }, duration);
+            setTimeout(() => closeToast(toastId), duration);
         }
 
         function closeToast(toastId) {
             const toast = document.getElementById(toastId);
             if (toast) {
-                toast.classList.remove('toast-enter');
                 toast.classList.add('toast-exit');
-                setTimeout(() => {
-                    toast.remove();
-                }, 300);
+                setTimeout(() => toast.remove(), 300);
             }
         }
 
-        function closeAllToasts() {
-            const container = document.getElementById('toastContainer');
-            const toasts = container.querySelectorAll('.toast-notification');
-            toasts.forEach(toast => {
-                closeToast(toast.id);
-            });
-        }
-
         // ========== MODAL UPLOAD ==========
-        
+
         function openUploadModal() {
             const modal = document.getElementById('uploadModal');
             const modalContent = document.getElementById('modalContent');
@@ -654,8 +488,37 @@
             }, 300);
         }
 
+        // ========== MODAL INFO & SUPPORT ==========
+
+        function openInfoModal() {
+            const modal = document.getElementById('infoModal');
+            const modalContent = document.getElementById('infoModalContent');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95');
+                modalContent.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeInfoModal() {
+            const modal = document.getElementById('infoModal');
+            const modalContent = document.getElementById('infoModalContent');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function contactSupport() {
+            showToast('info', '📧 Redirection vers le support en cours...');
+            setTimeout(() => {
+                window.location.href = 'mailto:support@smartdatavault.com?subject=Support%20SmartDataVault&body=Bonjour,%0D%0A%0D%0AJ\'ai besoin d\'aide concernant...';
+            }, 1000);
+        }
+
         // ========== RECHERCHE ET FILTRES ==========
-        
+
         function toggleSearch() {
             const searchBox = document.getElementById('searchBox');
             const filterBox = document.getElementById('filterBox');
@@ -680,21 +543,35 @@
         }
 
         // ========== ÉVÉNEMENTS ==========
-        
+
         document.getElementById('uploadModal')?.addEventListener('click', function(e) {
             if (e.target === this) {
                 closeUploadModal();
             }
         });
 
+        document.getElementById('infoModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeInfoModal();
+            }
+        });
+
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
-                const modal = document.getElementById('uploadModal');
-                if (modal && !modal.classList.contains('hidden')) {
+                const uploadModal = document.getElementById('uploadModal');
+                const infoModal = document.getElementById('infoModal');
+                
+                if (uploadModal && !uploadModal.classList.contains('hidden')) {
                     closeUploadModal();
+                }
+                if (infoModal && !infoModal.classList.contains('hidden')) {
+                    closeInfoModal();
                 }
             }
         });
     </script>
+
+    {{-- Modal Info & Support --}}
+    @include('components.info-support-modal')
 </body>
 </html>
