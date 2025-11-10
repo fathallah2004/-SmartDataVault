@@ -22,11 +22,10 @@
                         📄 Fichier à sécuriser :
                     </label>
                     <input type="file" name="file" id="fileInput" required 
-                           accept="image/*,.jpg,.jpeg,.png,.gif,.bmp,.webp,.txt,.doc,.docx,.rtf,.md,.pdf"
-                           onchange="updateAlgorithmOptions(this)"
+                           accept=".txt,.doc,.docx,.rtf,.md,.pdf"
                            class="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-gray-300 transition duration-150">
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                        Formats acceptés : Texte (.txt, .doc, .docx, .rtf, .md, .pdf) ou Images (.jpg, .jpeg, .png, .gif, .bmp, .webp) (max 10MB)
+                        Formats acceptés : .txt, .doc, .docx, .rtf, .md, .pdf (max 10MB)
                     </p>
                 </div>
 
@@ -37,13 +36,8 @@
                     </label>
                     <select name="encryption_method" id="algorithmSelect" required 
                             class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 py-3 px-4 border transition duration-150">
-                        <!-- Options texte par défaut -->
                         @foreach($algorithms as $value => $name)
-                            <option value="{{ $value }}" class="text-algorithm">{{ $name }}</option>
-                        @endforeach
-                        <!-- Options images -->
-                        @foreach($imageAlgorithms as $value => $name)
-                            <option value="{{ $value }}" class="image-algorithm" style="display:none;">{{ $name }}</option>
+                            <option value="{{ $value }}">{{ $name }}</option>
                         @endforeach
                     </select>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">

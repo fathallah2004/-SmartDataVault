@@ -12,7 +12,6 @@ return new class extends Migration
             $table->integer('total_files_encrypted')->default(0);
             $table->bigInteger('total_storage_used')->default(0);
             $table->timestamp('last_upload_at')->nullable();
-            $table->string('preferred_encryption')->default('aes-256');
         });
     }
 
@@ -22,8 +21,7 @@ return new class extends Migration
             $table->dropColumn([
                 'total_files_encrypted',
                 'total_storage_used', 
-                'last_upload_at',
-                'preferred_encryption'
+                'last_upload_at'
             ]);
         });
     }

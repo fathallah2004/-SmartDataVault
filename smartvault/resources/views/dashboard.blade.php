@@ -239,9 +239,6 @@
                                     'vigenere' => 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border border-purple-200',
                                     'reverse' => 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border border-orange-200',
                                     'xor-text' => 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200',
-                                    'aes-diffusion' => 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 border border-indigo-200',
-                                    'chaos' => 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200 border border-pink-200',
-                                    'dwt-hybrid' => 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200 border border-cyan-200',
                                 ];
                                 @endphp
 
@@ -495,63 +492,6 @@
             setTimeout(() => {
                 modal.classList.add('hidden');
             }, 300);
-        }
-
-        function updateAlgorithmOptions(fileInput) {
-            const file = fileInput.files[0];
-            if (!file) {
-                return;
-            }
-
-            const fileName = file.name.toLowerCase();
-            const fileType = file.type.toLowerCase();
-            
-            // Vérifier par extension et par type MIME
-            const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
-            const imageMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp', 'image/webp'];
-            
-            const isImageByExtension = imageExtensions.some(ext => fileName.endsWith(ext));
-            const isImageByMime = imageMimeTypes.some(mime => fileType.startsWith('image/'));
-            const isImage = isImageByExtension || isImageByMime;
-
-            const algorithmSelect = document.getElementById('algorithmSelect');
-            if (!algorithmSelect) {
-                console.error('Element algorithmSelect not found');
-                return;
-            }
-
-            const textOptions = algorithmSelect.querySelectorAll('.text-algorithm');
-            const imageOptions = algorithmSelect.querySelectorAll('.image-algorithm');
-
-            if (isImage) {
-                // Masquer les options texte et afficher les options images
-                textOptions.forEach(opt => {
-                    opt.style.display = 'none';
-                    opt.disabled = true;
-                });
-                imageOptions.forEach(opt => {
-                    opt.style.display = 'block';
-                    opt.disabled = false;
-                });
-                // Sélectionner la première option image
-                if (imageOptions.length > 0) {
-                    algorithmSelect.value = imageOptions[0].value;
-                }
-            } else {
-                // Masquer les options images et afficher les options texte
-                textOptions.forEach(opt => {
-                    opt.style.display = 'block';
-                    opt.disabled = false;
-                });
-                imageOptions.forEach(opt => {
-                    opt.style.display = 'none';
-                    opt.disabled = true;
-                });
-                // Sélectionner la première option texte
-                if (textOptions.length > 0) {
-                    algorithmSelect.value = textOptions[0].value;
-                }
-            }
         }
 
         // ========== MODAL INFO & SUPPORT ==========

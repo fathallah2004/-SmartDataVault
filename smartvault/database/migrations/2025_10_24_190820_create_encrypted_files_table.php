@@ -25,7 +25,7 @@ return new class extends Migration
             $table->text('iv')->nullable(); // Vecteur d'initialisation
             
             // Sécurité
-            $table->string('file_hash'); // Pour vérifier l'intégrité
+            $table->string('file_hash');
             
             // Relations
             $table->foreignId('user_id')->constrained()->onDelete('cascade');

@@ -20,9 +20,7 @@ class EncryptionTestController extends Controller
      */
     public function showTestPage()
     {
-        $encryptionService = new EncryptionService();
-        $algorithms = $encryptionService->getAvailableAlgorithms();
-        
+        $algorithms = $this->encryptionService->getAvailableAlgorithms();
         return view('encryption-test', compact('algorithms'));
     }
 

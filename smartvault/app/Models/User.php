@@ -17,8 +17,7 @@ class User extends Authenticatable
         'password',
         'total_files_encrypted',
         'total_storage_used',
-        'last_upload_at',
-        'preferred_encryption'
+        'last_upload_at'
     ];
 
     protected $hidden = [
@@ -35,34 +34,20 @@ class User extends Authenticatable
         ];
     }
 
-    /**
-     * Relation avec les fichiers chiffrés
-     */
     public function encryptedFiles()
     {
         return $this->hasMany(EncryptedFile::class);
     }
 
-    /**
-     * Formater le stockage utilisé
-     */
     public function getFormattedStorageAttribute()
     {
         $bytes = $this->total_storage_used;
-        if ($bytes >= 1073741824) {
-            return number_format($bytes / 1073741824, 2) . ' GB';
-        } elseif ($bytes >= 1048576) {
-            return number_format($bytes / 1048576, 2) . ' MB';
-        } elseif ($bytes >= 1024) {
-            return number_format($bytes / 1024, 2) . ' KB';
-        } else {
-            return $bytes . ' bytes';
-        }
+        if ($bytes >= 1073741824) return number_format($bytes / 1073741824, 2) . ' GB';
+        if ($bytes >= 1048576) return number_format($bytes / 1048576, 2) . ' MB';
+        if ($bytes >= 1024) return number_format($bytes / 1024, 2) . ' KB';
+        return $bytes . ' bytes';
     }
 
-    /**
-     * Mettre à jour les statistiques après upload
-     */
     public function updateStatsAfterUpload($fileSize)
     {
         $this->increment('total_files_encrypted');
@@ -71,9 +56,6 @@ class User extends Authenticatable
         $this->save();
     }
 
-    /**
-     * Mettre à jour les statistiques après suppression
-     */
     public function updateStatsAfterDelete($fileSize)
     {
         $this->decrement('total_files_encrypted');

@@ -19,9 +19,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/files', [DashboardController::class, 'store'])->name('files.store');
     Route::get('/files/{file}/download', [DashboardController::class, 'download'])->name('files.download');
     Route::delete('/files/{file}', [DashboardController::class, 'destroy'])->name('files.destroy');
-    
-    // ✅ AJOUTEZ CETTE LIGNE :
-    Route::get('/encryption-status', [DashboardController::class, 'encryptionStatus'])->name('encryption.status');
 });
 
 // Routes du profil et test de cryptage
