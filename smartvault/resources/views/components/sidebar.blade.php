@@ -8,8 +8,11 @@ if ($user) {
     $storagePercentage = $user->total_storage_used > 0 ? 
         min(($user->total_storage_used / $storageLimit) * 100, 100) : 0;
     
+    // 🔥 CORRECTION : Compter réellement les fichiers au lieu d'utiliser la valeur stockée
+    $realFileCount = $user->encryptedFiles()->count();
+    
     $stats = [
-        'total_files' => $user->total_files_encrypted,
+        'total_files' => $realFileCount,
         'total_storage' => $user->formatted_storage,
         'last_upload' => $user->last_upload_at ? $user->last_upload_at->diffForHumans() : 'Jamais',
         'storage_percentage' => $storagePercentage // 🔥 Utilisation du bon calcul

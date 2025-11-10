@@ -18,7 +18,8 @@ class EncryptedFile extends Model
         'encryption_key',
         'iv',
         'file_hash',
-        'user_id'
+        'user_id',
+        'metadata'
     ];
 
     /**
@@ -81,6 +82,7 @@ class EncryptedFile extends Model
             'rtf' => '📋',
             'md' => '📑',
             'pdf' => '📕',
+            'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp' => '🖼️',
             default => '📁'
         };
     }
@@ -92,6 +94,25 @@ class EncryptedFile extends Model
     {
         $textExtensions = ['txt', 'doc', 'docx', 'rtf', 'md', 'pdf'];
         return in_array(strtolower($this->file_type), $textExtensions);
+    }
+
+    public function getIsImageFileAttribute()
+    {
+        $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+        return in_array(strtolower($this->file_type), $imageExtensions);
+    }
+
+    public function getMetadataAttribute($value)
+    {
+        if (empty($value)) {
+            return null;
+        }
+        return json_decode($value, true);
+    }
+
+    public function setMetadataAttribute($value)
+    {
+        $this->attributes['metadata'] = is_array($value) ? json_encode($value) : $value;
     }
 
     /**
@@ -144,7 +165,10 @@ class EncryptedFile extends Model
             'vigenere' => 'Vigenère',
             'xor-text' => 'XOR Textuel',
             'substitution' => 'Substitution',
-            'reverse' => 'Inversion'
+            'reverse' => 'Inversion',
+            'aes-diffusion' => 'AES + Diffusion',
+            'chaos' => 'Chaos (Arnold + Logistic)',
+            'dwt-hybrid' => 'DWT Hybride'
         ];
 
         return $algorithms[$this->encryption_method] ?? $this->encryption_method;

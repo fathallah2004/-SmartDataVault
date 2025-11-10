@@ -239,6 +239,9 @@
                                     'vigenere' => 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border border-purple-200',
                                     'reverse' => 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border border-orange-200',
                                     'xor-text' => 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200',
+                                    'aes-diffusion' => 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 border border-indigo-200',
+                                    'chaos' => 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200 border border-pink-200',
+                                    'dwt-hybrid' => 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200 border border-cyan-200',
                                 ];
                                 @endphp
 
@@ -256,16 +259,22 @@
                                     @foreach($files as $file)
                                     <div class="file-row group flex flex-col lg:flex-row items-center bg-white/90 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl border border-gray-200 dark:border-gray-700 p-5 hover:border-blue-400 hover:shadow-xl transition-all duration-300">
                                         
-                                        <div class="flex-1 min-w-0 w-full lg:w-auto mb-4 lg:mb-0">
-                                            <h4 class="font-bold text-gray-900 dark:text-white truncate text-lg">
-                                                {{ $file->original_name }}
-                                            </h4>
+                                        <div class="flex-1 min-w-0 w-full lg:w-auto mb-4 lg:mb-0 flex items-center gap-3">
+                                            <span class="text-3xl flex-shrink-0">{{ $file->file_icon }}</span>
+                                            <div class="min-w-0 flex-1">
+                                                <h4 class="font-bold text-gray-900 dark:text-white truncate text-lg">
+                                                    {{ $file->original_name }}
+                                                </h4>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                    {{ $file->algorithm_name }}
+                                                </p>
+                                            </div>
                                         </div>
 
                                         <div class="flex items-center justify-end w-full lg:w-[580px] flex-shrink-0 space-x-6">
                                             <div class="w-32 text-center">
                                                 <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {{ $algorithmStyles[$file->encryption_method] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 border border-gray-200' }}">
-                                                    ⚙️ {{ $file->encryption_method }}
+                                                    {{ $file->algorithm_name }}
                                                 </span>
                                             </div>
 
@@ -486,6 +495,63 @@
             setTimeout(() => {
                 modal.classList.add('hidden');
             }, 300);
+        }
+
+        function updateAlgorithmOptions(fileInput) {
+            const file = fileInput.files[0];
+            if (!file) {
+                return;
+            }
+
+            const fileName = file.name.toLowerCase();
+            const fileType = file.type.toLowerCase();
+            
+            // Vérifier par extension et par type MIME
+            const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+            const imageMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp', 'image/webp'];
+            
+            const isImageByExtension = imageExtensions.some(ext => fileName.endsWith(ext));
+            const isImageByMime = imageMimeTypes.some(mime => fileType.startsWith('image/'));
+            const isImage = isImageByExtension || isImageByMime;
+
+            const algorithmSelect = document.getElementById('algorithmSelect');
+            if (!algorithmSelect) {
+                console.error('Element algorithmSelect not found');
+                return;
+            }
+
+            const textOptions = algorithmSelect.querySelectorAll('.text-algorithm');
+            const imageOptions = algorithmSelect.querySelectorAll('.image-algorithm');
+
+            if (isImage) {
+                // Masquer les options texte et afficher les options images
+                textOptions.forEach(opt => {
+                    opt.style.display = 'none';
+                    opt.disabled = true;
+                });
+                imageOptions.forEach(opt => {
+                    opt.style.display = 'block';
+                    opt.disabled = false;
+                });
+                // Sélectionner la première option image
+                if (imageOptions.length > 0) {
+                    algorithmSelect.value = imageOptions[0].value;
+                }
+            } else {
+                // Masquer les options images et afficher les options texte
+                textOptions.forEach(opt => {
+                    opt.style.display = 'block';
+                    opt.disabled = false;
+                });
+                imageOptions.forEach(opt => {
+                    opt.style.display = 'none';
+                    opt.disabled = true;
+                });
+                // Sélectionner la première option texte
+                if (textOptions.length > 0) {
+                    algorithmSelect.value = textOptions[0].value;
+                }
+            }
         }
 
         // ========== MODAL INFO & SUPPORT ==========

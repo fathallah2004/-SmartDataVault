@@ -200,7 +200,7 @@
                                             <label class="block text-sm font-semibold mb-3 text-gray-700 dark:text-gray-300 flex items-center justify-between">
                                                 <span class="flex items-center space-x-2">
                                                     <i class="fas fa-lock text-blue-500"></i>
-                                                    <span>Texte chiffré</span>
+                                                    <span>Texte chiffré (texte brut)</span>
                                                 </span>
                                                 <button type="button" onclick="copyToClipboard('encryptedResult')"
                                                         class="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-all duration-300 flex items-center space-x-1">
@@ -211,6 +211,9 @@
                                             <textarea id="encryptedResult" rows="6" readonly
                                                       class="w-full rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-300 font-mono text-sm p-3 resize-none"></textarea>
                                             <p id="encryptedKey" class="text-xs text-gray-500 dark:text-gray-400 mt-3 font-mono bg-gray-100 dark:bg-gray-700 p-2 rounded-lg"></p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                                💡 Le texte affiché est le résultat brut du chiffrement (non encodé en base64)
+                                            </p>
                                         </div>
 
                                         <!-- Résultat déchiffré -->
@@ -421,12 +424,15 @@
                 const result = await response.json();
 
                 if (response.ok) {
-                    document.getElementById('encryptedResult').value = result.encrypted_content;
+                    // Toujours afficher le texte brut chiffré (non base64)
+                    const encryptedDisplay = result.encrypted_text_raw || result.encrypted_content;
+                    document.getElementById('encryptedResult').value = encryptedDisplay;
                     document.getElementById('decryptedResult').value = result.decrypted_text;
                     document.getElementById('encryptedKey').textContent = '🔑 Clé utilisée: ' + result.used_key;
                     
+                    // Stocker le base64 pour le déchiffrement (nécessaire pour l'API)
                     const decryptBtn = document.getElementById('decryptBtn');
-                    decryptBtn.dataset.encrypted = result.encrypted_content;
+                    decryptBtn.dataset.encrypted = result.encrypted_content; // Base64 pour l'API
                     decryptBtn.dataset.key = result.used_key;
                     decryptBtn.dataset.algorithm = algorithm;
                     decryptBtn.disabled = false;
