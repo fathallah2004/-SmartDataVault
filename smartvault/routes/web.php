@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EncryptionTestController;
@@ -38,5 +39,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/algorithm-info', [EncryptionTestController::class, 'getAlgorithmInfo']);
     Route::get('/api/generate-key', [EncryptionTestController::class, 'generateKey']);
 });
+
+Route::middleware(['auth', 'verified', 'admin'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/users', [AdminDashboardController::class, 'index'])->name('users.index');
+        Route::get('/users/{user}', [AdminDashboardController::class, 'show'])->name('users.show');
+        Route::delete('/users/{user}', [AdminDashboardController::class, 'destroy'])->name('users.destroy');
+    });
 
 require __DIR__.'/auth.php';

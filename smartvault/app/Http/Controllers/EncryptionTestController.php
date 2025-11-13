@@ -20,6 +20,10 @@ class EncryptionTestController extends Controller
      */
     public function showTestPage()
     {
+        if (auth()->user()?->isAdmin()) {
+            return redirect()->route('admin.dashboard');
+        }
+
         $algorithms = $this->encryptionService->getAvailableAlgorithms();
         return view('encryption-test', compact('algorithms'));
     }
@@ -29,6 +33,8 @@ class EncryptionTestController extends Controller
      */
     public function testEncryption(Request $request): JsonResponse
     {
+        $this->ensureNonAdmin();
+
         $request->validate([
             'text' => 'required|string|max:5000',
             'algorithm' => 'required|in:cesar,vigenere,xor-text,substitution,reverse',
@@ -90,6 +96,8 @@ class EncryptionTestController extends Controller
      */
     public function testDecryption(Request $request): JsonResponse
     {
+        $this->ensureNonAdmin();
+
         $request->validate([
             'encrypted_content' => 'required|string',
             'algorithm' => 'required|in:cesar,vigenere,xor-text,substitution,reverse',
@@ -123,6 +131,8 @@ class EncryptionTestController extends Controller
      */
     public function getAlgorithmInfo(Request $request): JsonResponse
     {
+        $this->ensureNonAdmin();
+
         $request->validate([
             'algorithm' => 'required|in:cesar,vigenere,xor-text,substitution,reverse'
         ]);
@@ -142,6 +152,8 @@ class EncryptionTestController extends Controller
      */
     public function generateKey(Request $request): JsonResponse
     {
+        $this->ensureNonAdmin();
+
         $request->validate([
             'algorithm' => 'required|in:cesar,vigenere,xor-text,substitution,reverse'
         ]);
@@ -512,5 +524,12 @@ class EncryptionTestController extends Controller
         ];
 
         return $details[$algorithm] ?? [];
+    }
+
+    private function ensureNonAdmin(): void
+    {
+        if (auth()->user()?->isAdmin()) {
+            abort(403, 'Fonctionnalité réservée aux utilisateurs standards.');
+        }
     }
 }

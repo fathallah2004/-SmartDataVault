@@ -19,6 +19,11 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
+
+        if ($user->isAdmin()) {
+            return redirect()->route('admin.dashboard');
+        }
+
         $stats = [
             'total_files' => $user->total_files_encrypted,
             'total_storage' => $user->formatted_storage,

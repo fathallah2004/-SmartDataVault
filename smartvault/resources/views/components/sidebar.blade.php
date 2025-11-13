@@ -1,5 +1,6 @@
 @php
 use App\Services\EncryptionService;
+use Illuminate\Support\Facades\Auth;
 
 $user = Auth::user();
 if ($user) {
