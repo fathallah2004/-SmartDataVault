@@ -18,7 +18,9 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
 // Routes pour la gestion des fichiers chiffrés
 Route::middleware(['auth'])->group(function () {
     Route::post('/files', [DashboardController::class, 'store'])->name('files.store');
+    Route::post('/images', [DashboardController::class, 'storeImage'])->name('images.store');
     Route::get('/files/{file}/download', [DashboardController::class, 'download'])->name('files.download');
+    Route::get('/files/{file}/download-encrypted', [DashboardController::class, 'downloadEncrypted'])->name('files.download.encrypted');
     Route::delete('/files/{file}', [DashboardController::class, 'destroy'])->name('files.destroy');
 });
 
@@ -48,6 +50,10 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::get('/users', [AdminDashboardController::class, 'index'])->name('users.index');
         Route::get('/users/{user}', [AdminDashboardController::class, 'show'])->name('users.show');
         Route::delete('/users/{user}', [AdminDashboardController::class, 'destroy'])->name('users.destroy');
+        
+        // Routes pour la gestion des fichiers par les admins
+        Route::get('/files/{file}/download', [AdminDashboardController::class, 'downloadFile'])->name('files.download');
+        Route::delete('/files/{file}', [AdminDashboardController::class, 'deleteFile'])->name('files.destroy');
     });
 
 require __DIR__.'/auth.php';

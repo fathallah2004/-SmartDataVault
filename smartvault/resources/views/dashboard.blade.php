@@ -132,6 +132,15 @@
                                         <span class="text-xl">+</span>
                                         <span>Ajouter un fichier</span>
                                     </button>
+                                    
+                                    <!-- Bouton Upload Image -->
+                                    <button onclick="openImageUploadModal()" 
+                                            class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-xl flex items-center space-x-2 transition-all duration-300 font-semibold hover:scale-105 hover:shadow-lg">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                        </svg>
+                                        <span>Image</span>
+                                    </button>
                                 </div>
                             </div>
                             
@@ -257,22 +266,36 @@
                                     <div class="file-row group flex flex-col lg:flex-row items-center bg-white/90 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl border border-gray-200 dark:border-gray-700 p-5 hover:border-blue-400 hover:shadow-xl transition-all duration-300">
                                         
                                         <div class="flex-1 min-w-0 w-full lg:w-auto mb-4 lg:mb-0 flex items-center gap-3">
+                                            @if($file->file_category === 'image')
+                                                <span class="text-3xl flex-shrink-0">🖼️</span>
+                                            @else
                                             <span class="text-3xl flex-shrink-0">{{ $file->file_icon }}</span>
+                                            @endif
                                             <div class="min-w-0 flex-1">
                                                 <h4 class="font-bold text-gray-900 dark:text-white truncate text-lg">
                                                     {{ $file->original_name }}
                                                 </h4>
                                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                    @if($file->file_category === 'image')
+                                                        Image • XOR
+                                                    @else
                                                     {{ $file->algorithm_name }}
+                                                    @endif
                                                 </p>
                                             </div>
                                         </div>
 
                                         <div class="flex items-center justify-end w-full lg:w-[580px] flex-shrink-0 space-x-6">
                                             <div class="w-32 text-center">
+                                                @if($file->file_category === 'image')
+                                                    <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border border-purple-200">
+                                                        XOR Image
+                                                    </span>
+                                                @else
                                                 <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {{ $algorithmStyles[$file->encryption_method] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 border border-gray-200' }}">
                                                     {{ $file->algorithm_name }}
                                                 </span>
+                                                @endif
                                             </div>
 
                                             <div class="w-24 text-center text-gray-600 dark:text-gray-300 text-sm font-medium">
@@ -284,13 +307,32 @@
                                             </div>
 
                                             <div class="w-48 flex justify-center items-center gap-2">
-                                                <a href="{{ route('files.download', $file) }}" 
-                                                   class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-xl text-xs font-semibold transition-all duration-300 hover:scale-105 flex items-center gap-1 whitespace-nowrap">
-                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                                    </svg>
-                                                    Télécharger
-                                                </a>
+                                                @if($file->file_category === 'image')
+                                                    {{-- Boutons pour les images : icônes uniquement --}}
+                                                    <a href="{{ route('files.download', $file) }}" 
+                                                       class="bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded-xl text-xs font-semibold transition-all duration-300 hover:scale-105 flex items-center justify-center" 
+                                                       title="Télécharger l'image déchiffrée">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                                        </svg>
+                                                    </a>
+                                                    <a href="{{ route('files.download.encrypted', $file) }}" 
+                                                       class="bg-purple-600 hover:bg-purple-700 text-white py-2 px-3 rounded-xl text-xs font-semibold transition-all duration-300 hover:scale-105 flex items-center justify-center" 
+                                                       title="Télécharger l'image chiffrée">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                                        </svg>
+                                                    </a>
+                                                @else
+                                                    {{-- Bouton pour les fichiers texte : avec texte --}}
+                                                    <a href="{{ route('files.download', $file) }}" 
+                                                       class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-xl text-xs font-semibold transition-all duration-300 hover:scale-105 flex items-center gap-1 whitespace-nowrap">
+                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                        </svg>
+                                                        Télécharger
+                                                    </a>
+                                                @endif
 
                                                 <form action="{{ route('files.destroy', $file) }}" method="POST" class="inline-block">
                                                     @csrf 
@@ -346,6 +388,50 @@
                     </div>
                 </div>
             </main>
+        </div>
+    </div>
+
+    <!-- Modal d'upload d'image -->
+    <div id="imageUploadModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden transition-opacity duration-300">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-transform duration-300 scale-95" id="imageModalContent">
+            <div class="p-8">
+                <div class="flex justify-between items-center mb-8">
+                    <h3 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                        🖼️ Uploader une image
+                    </h3>
+                    <button onclick="closeImageUploadModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition duration-300 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <form action="{{ route('images.store') }}" method="POST" enctype="multipart/form-data" class="space-y-8">
+                    @csrf
+                    
+                    <div>
+                        <label class="block text-base font-semibold mb-4 text-gray-700 dark:text-gray-300">
+                            🖼️ Image à sécuriser :
+                        </label>
+                        <input type="file" name="image" id="imageInput" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/bmp,image/svg+xml" required 
+                               class="block w-full text-lg text-gray-500 dark:text-gray-400 file:mr-4 file:py-3 file:px-6 file:rounded-xl file:border-0 file:text-base file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 dark:file:bg-purple-900 dark:file:text-purple-300 cursor-pointer border-2 border-gray-300 dark:border-gray-600 rounded-2xl p-4 bg-white dark:bg-gray-700">
+                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                            Formats supportés: JPG, PNG, GIF, WEBP, BMP, SVG (max 20MB)
+                        </p>
+                    </div>
+
+                    <div class="flex gap-4 pt-4">
+                        <button type="submit" 
+                                class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-lg">
+                            🔒 Chiffrer et stocker
+                        </button>
+                        <button type="button" onclick="closeImageUploadModal()" 
+                                class="flex-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-bold py-4 px-6 rounded-xl transition-all duration-300">
+                            Annuler
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -494,6 +580,28 @@
             }, 300);
         }
 
+        // ========== MODAL UPLOAD IMAGE ==========
+
+        function openImageUploadModal() {
+            const modal = document.getElementById('imageUploadModal');
+            const modalContent = document.getElementById('imageModalContent');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95');
+                modalContent.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeImageUploadModal() {
+            const modal = document.getElementById('imageUploadModal');
+            const modalContent = document.getElementById('imageModalContent');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
         // ========== MODAL INFO & SUPPORT ==========
 
         function openInfoModal() {
@@ -556,6 +664,12 @@
             }
         });
 
+        document.getElementById('imageUploadModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeImageUploadModal();
+            }
+        });
+
         document.getElementById('infoModal')?.addEventListener('click', function(e) {
             if (e.target === this) {
                 closeInfoModal();
@@ -565,10 +679,13 @@
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 const uploadModal = document.getElementById('uploadModal');
+                const imageUploadModal = document.getElementById('imageUploadModal');
                 const infoModal = document.getElementById('infoModal');
                 
                 if (uploadModal && !uploadModal.classList.contains('hidden')) {
                     closeUploadModal();
+                } else if (imageUploadModal && !imageUploadModal.classList.contains('hidden')) {
+                    closeImageUploadModal();
                 }
                 if (infoModal && !infoModal.classList.contains('hidden')) {
                     closeInfoModal();

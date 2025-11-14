@@ -70,6 +70,16 @@ class DashboardController extends Controller
         return $this->storeText($file, $request->encryption_method, $extension);
     }
 
+    public function storeImage(Request $request)
+    {
+        $request->validate([
+            'image' => 'required|image|mimes:jpeg,jpg,png,gif,webp,bmp,svg|max:20480'
+        ]);
+
+        $file = $request->file('image');
+        return $this->storeImageFile($file);
+    }
+
     private function storeText($file, $method, $extension)
     {
         try {
@@ -90,6 +100,7 @@ class DashboardController extends Controller
                 'original_name' => $file->getClientOriginalName(),
                 'file_size' => $file->getSize(),
                 'file_type' => $extension,
+                'file_category' => 'text',
                 'encrypted_content' => $encrypted['encrypted_content'],
                 'encryption_method' => $encrypted['method'],
                 'encryption_key' => $encrypted['key'],
@@ -102,6 +113,125 @@ class DashboardController extends Controller
             return redirect()->route('dashboard')->with('success', 'Fichier "' . $file->getClientOriginalName() . '" chiffré avec succès !');
         } catch (\Exception $e) {
             return redirect()->route('dashboard')->with('error', $e->getMessage());
+        }
+    }
+
+    private function storeImageFile($file)
+    {
+        try {
+            $extension = strtolower($file->getClientOriginalExtension());
+            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'];
+            
+            if (!in_array($extension, $allowedExtensions)) {
+                return redirect()->route('dashboard')->with('error', 'Formats d\'image supportés: JPG, PNG, GIF, WEBP, BMP, SVG');
+            }
+
+            // Lire le contenu de l'image directement (sans compression pour éviter les problèmes de format)
+            // La compression peut causer des problèmes de format, donc on stocke l'original
+            $imageData = file_get_contents($file->path());
+            
+            // Optionnel: Compresser seulement si nécessaire (peut causer des problèmes de format)
+            // $compressedData = $this->compressImage($file->path(), $extension);
+            // if ($compressedData !== false && strlen($compressedData) > 0) {
+            //     $imageData = $compressedData;
+            // }
+
+            // Chiffrer l'image
+            $encrypted = (new EncryptionService())->encryptImage($imageData);
+            
+            // Calculer la taille après compression
+            $fileSize = strlen($imageData);
+            
+            EncryptedFile::create([
+                'original_name' => $file->getClientOriginalName(),
+                'file_size' => $fileSize,
+                'file_type' => $extension,
+                'file_category' => 'image',
+                'encrypted_content' => $encrypted['encrypted_content'],
+                'encryption_method' => $encrypted['method'],
+                'encryption_key' => $encrypted['key'],
+                'iv' => $encrypted['iv'],
+                'file_hash' => $encrypted['hash'],
+                'user_id' => Auth::id()
+            ]);
+
+            Auth::user()->updateStatsAfterUpload($fileSize);
+            return redirect()->route('dashboard')->with('success', 'Image "' . $file->getClientOriginalName() . '" chiffrée avec succès !');
+        } catch (\Exception $e) {
+            return redirect()->route('dashboard')->with('error', $e->getMessage());
+        }
+    }
+
+    private function compressImage($imagePath, $extension)
+    {
+        if (!extension_loaded('gd')) {
+            return false;
+        }
+
+        try {
+            $maxWidth = 1920;
+            $maxHeight = 1920;
+            $quality = 85;
+
+            // Créer l'image selon le type
+            $image = match($extension) {
+                'jpg', 'jpeg' => imagecreatefromjpeg($imagePath),
+                'png' => imagecreatefrompng($imagePath),
+                'gif' => imagecreatefromgif($imagePath),
+                'webp' => function_exists('imagecreatefromwebp') ? imagecreatefromwebp($imagePath) : false,
+                'bmp' => function_exists('imagecreatefrombmp') ? imagecreatefrombmp($imagePath) : false,
+                default => false
+            };
+
+            if ($image === false) {
+                return false;
+            }
+
+            $width = imagesx($image);
+            $height = imagesy($image);
+
+            // Redimensionner si nécessaire
+            if ($width > $maxWidth || $height > $maxHeight) {
+                $ratio = min($maxWidth / $width, $maxHeight / $height);
+                $newWidth = (int)($width * $ratio);
+                $newHeight = (int)($height * $ratio);
+                
+                $newImage = imagecreatetruecolor($newWidth, $newHeight);
+                
+                // Préserver la transparence pour PNG et GIF
+                if ($extension === 'png' || $extension === 'gif') {
+                    imagealphablending($newImage, false);
+                    imagesavealpha($newImage, true);
+                    $transparent = imagecolorallocatealpha($newImage, 255, 255, 255, 127);
+                    imagefilledrectangle($newImage, 0, 0, $newWidth, $newHeight, $transparent);
+                }
+                
+                imagecopyresampled($newImage, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+                imagedestroy($image);
+                $image = $newImage;
+                $width = $newWidth;
+                $height = $newHeight;
+            }
+
+            // Capturer la sortie dans un buffer
+            ob_start();
+            
+            match($extension) {
+                'jpg', 'jpeg' => imagejpeg($image, null, $quality),
+                'png' => imagepng($image, null, 9),
+                'gif' => imagegif($image),
+                'webp' => function_exists('imagewebp') ? imagewebp($image, null, $quality) : imagejpeg($image, null, $quality),
+                'bmp' => imagejpeg($image, null, $quality), // Convertir BMP en JPEG
+                default => imagejpeg($image, null, $quality)
+            };
+            
+            $compressedData = ob_get_contents();
+            ob_end_clean();
+            imagedestroy($image);
+
+            return $compressedData;
+        } catch (\Exception $e) {
+            return false;
         }
     }
 
@@ -156,6 +286,11 @@ class DashboardController extends Controller
             abort(403);
         }
 
+        // Gérer les images différemment
+        if ($file->file_category === 'image') {
+            return $this->downloadImage($file);
+        }
+
         try {
             $decryptedContent = (new EncryptionService())->decryptText($file->encrypted_content, $file->getDecryptionKey(), $file->encryption_method);
         } catch (\Exception $e) {
@@ -189,6 +324,46 @@ class DashboardController extends Controller
             ->header('Content-Transfer-Encoding', 'binary');
     }
 
+    private function downloadImage(EncryptedFile $file)
+    {
+        try {
+            $decryptedContent = (new EncryptionService())->decryptImage($file->encrypted_content, $file->getDecryptionKey(), $file->iv);
+            
+            // Vérifier que le contenu déchiffré n'est pas vide
+            if (empty($decryptedContent)) {
+                return redirect()->route('dashboard')->with('error', 'Le contenu déchiffré est vide.');
+            }
+            
+            // Vérifier que le contenu a une taille raisonnable
+            if (strlen($decryptedContent) < 100) {
+                return redirect()->route('dashboard')->with('error', 'Le contenu déchiffré semble invalide.');
+            }
+        } catch (\Exception $e) {
+            return redirect()->route('dashboard')->with('error', 'Erreur de déchiffrement: ' . $e->getMessage());
+        }
+
+        $extension = strtolower($file->file_type);
+        $mimeTypes = [
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'bmp' => 'image/bmp',
+            'svg' => 'image/svg+xml'
+        ];
+
+        // S'assurer que le contenu est bien binaire (pas de conversion UTF-8)
+        return response($decryptedContent, 200, [
+            'Content-Type' => $mimeTypes[$extension] ?? 'image/jpeg',
+            'Content-Disposition' => 'attachment; filename="' . $file->original_name . '"',
+            'Content-Length' => strlen($decryptedContent),
+            'Content-Transfer-Encoding' => 'binary',
+            'Cache-Control' => 'no-cache, must-revalidate',
+            'Pragma' => 'no-cache'
+        ]);
+    }
+
     private function downloadAsDocx($content, $originalName)
     {
         try {
@@ -212,6 +387,49 @@ class DashboardController extends Controller
                 ->header('Content-Type', 'text/plain; charset=utf-8')
                 ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         }
+    }
+
+    public function downloadEncrypted(EncryptedFile $file)
+    {
+        if ($file->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        if ($file->file_category !== 'image') {
+            return redirect()->route('dashboard')->with('error', 'Le téléchargement chiffré est réservé aux images.');
+        }
+
+        // Télécharger la version chiffrée (l'image chiffrée mais qui reste une image valide)
+        // Le contenu stocké est déjà une image chiffrée mais avec format préservé
+        $encryptedBinary = base64_decode($file->encrypted_content, true);
+        if ($encryptedBinary === false) {
+            return redirect()->route('dashboard')->with('error', 'Impossible de récupérer le contenu chiffré.');
+        }
+
+        $extension = strtolower($file->file_type);
+        
+        // Nom du fichier avec extension originale (l'image chiffrée reste une image valide)
+        $fileName = pathinfo($file->original_name, PATHINFO_FILENAME) . '_encrypted.' . $extension;
+        
+        $mimeTypes = [
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'bmp' => 'image/bmp',
+            'svg' => 'image/svg+xml'
+        ];
+
+        // Retourner l'image chiffrée (qui est déjà une image valide grâce à notre algorithme)
+        return response($encryptedBinary, 200, [
+            'Content-Type' => $mimeTypes[$extension] ?? 'image/jpeg',
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+            'Content-Length' => strlen($encryptedBinary),
+            'Content-Transfer-Encoding' => 'binary',
+            'Cache-Control' => 'no-cache, must-revalidate',
+            'Pragma' => 'no-cache'
+        ]);
     }
 
     private function downloadAsPdf($content, $originalName)

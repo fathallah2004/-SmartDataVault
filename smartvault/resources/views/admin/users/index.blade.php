@@ -392,7 +392,7 @@
                         window.currentUserFiles = files || [];
                         window.currentUserFilesPagination = files_pagination || null;
                         window.currentUserId = user.id;
-                        
+
                         if (userDetailFilesCount) {
                             userDetailFilesCount.textContent = `${user.files_count} fichier(s)`;
                         }
@@ -631,8 +631,8 @@
                 } catch (error) {
                     console.error('Error loading files:', error);
                     alert('Erreur lors du chargement des fichiers');
-                }
-            }
+                        }
+                    }
 
             // Debounce pour la recherche (attendre 500ms après la dernière frappe)
             fileSearchInput?.addEventListener('input', () => {
@@ -662,19 +662,28 @@
                     return;
                 }
 
-                const response = await fetch(`/admin/files/${fileId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json',
-                    },
-                });
+                try {
+                    const response = await fetch(`/admin/files/${fileId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json',
+                        },
+                    });
 
-                if (response.ok) {
-                    // Recharger les fichiers avec les filtres actuels
-                    const currentPage = window.currentUserFilesPagination?.current_page || 1;
-                    await loadFilesWithFilters(currentPage);
+                    if (response.ok) {
+                        const data = await response.json();
+                        // Recharger les fichiers avec les filtres actuels
+                        const currentPage = window.currentUserFilesPagination?.current_page || 1;
+                        await loadFilesWithFilters(currentPage);
+                    } else {
+                        const error = await response.json().catch(() => ({ error: 'Erreur inconnue' }));
+                        alert('Erreur lors de la suppression: ' + (error.error || error.message || 'Erreur inconnue'));
+                    }
+                } catch (error) {
+                    console.error('Error deleting file:', error);
+                    alert('Erreur lors de la suppression du fichier: ' + error.message);
                 }
             }
 
