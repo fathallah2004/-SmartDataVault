@@ -45,7 +45,17 @@
                      class="mb-6 bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 p-4 rounded-lg shadow-md">
                     <div class="flex items-center">
                         <i class="fas fa-check-circle text-green-500 text-xl mr-3"></i>
-                        <p class="text-green-800 dark:text-green-300 font-medium">{{ session('status') }}</p>
+                        <p class="text-green-800 dark:text-green-300 font-medium">
+                            @if (session('status') === 'two-factor-authentication-enabled')
+                                {{ __('Two factor authentication has been enabled. Please confirm it by entering a code from your authenticator application.') }}
+                            @elseif (session('status') === 'two-factor-authentication-disabled')
+                                {{ __('Two factor authentication has been disabled.') }}
+                            @elseif (session('status') === 'two-factor-authentication-confirmed')
+                                {{ __('Two factor authentication has been confirmed and is now active.') }}
+                            @else
+                                {{ session('status') }}
+                            @endif
+                        </p>
                     </div>
                 </div>
             @endif
@@ -96,6 +106,28 @@
                         </div>
                         <div class="p-8">
                             @include('profile.partials.update-password-form')
+                        </div>
+                    </div>
+
+                    <!-- Two Factor Authentication Card -->
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-shadow duration-300">
+                        <div class="bg-gradient-to-r from-green-500 to-emerald-600 p-6">
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mr-4">
+                                    <i class="fas fa-shield-alt text-white text-xl"></i>
+                                </div>
+                                <div>
+                                    <h2 class="text-2xl font-bold text-white">
+                                        {{ __('Two Factor Authentication') }}
+                                    </h2>
+                                    <p class="text-green-100 text-sm mt-1">
+                                        Ajoutez une couche de sécurité supplémentaire à votre compte
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-8">
+                            @include('profile.partials.two-factor-authentication-form')
                         </div>
                     </div>
 

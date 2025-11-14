@@ -30,6 +30,19 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     
+    // Routes pour l'authentification à deux facteurs
+    Route::post('/user/two-factor-authentication', [App\Http\Controllers\TwoFactorAuthenticationController::class, 'store'])
+        ->name('two-factor.enable');
+    Route::delete('/user/two-factor-authentication', [App\Http\Controllers\TwoFactorAuthenticationController::class, 'destroy'])
+        ->name('two-factor.disable');
+    // Route GET pour afficher la page de confirmation (Fortify n'a que POST)
+    Route::get('/user/two-factor-confirmation', [App\Http\Controllers\TwoFactorConfirmationController::class, 'show'])
+        ->name('two-factor.confirmation.show');
+    // Route GET pour rediriger vers notre page de confirmation (pour compatibilité avec Fortify)
+    Route::get('/user/confirmed-two-factor-authentication', function () {
+        return redirect()->route('two-factor.confirmation.show');
+    });
+    
     // Route pour la page de test de cryptage
     Route::get('/encryption-test', [EncryptionTestController::class, 'showTestPage'])->name('encryption.test');
 });

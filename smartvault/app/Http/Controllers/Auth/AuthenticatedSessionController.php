@@ -30,9 +30,23 @@ class AuthenticatedSessionController extends Controller
 
         $user = $request->user();
 
-        if ($user) {
-            $user->forceFill(['last_login_at' => now()])->save();
+        // Check if user has two-factor authentication enabled and confirmed
+        if ($user && $user->two_factor_confirmed_at) {
+            // Store the login attempt in session for Fortify's 2FA flow
+            $request->session()->put([
+                'login.id' => $user->getKey(),
+                'login.remember' => $request->boolean('remember'),
+            ]);
+
+            // Logout the user temporarily - they need to complete 2FA
+            Auth::guard('web')->logout();
+
+            // Redirect to two-factor challenge page
+            return redirect()->route('two-factor.login');
         }
+
+        // User doesn't have 2FA enabled, proceed with normal login
+        // Note: last_login_at is updated via Login event listener in AppServiceProvider
 
         if ($user && $user->isAdmin()) {
             return redirect()->intended(route('admin.dashboard', absolute: false));
