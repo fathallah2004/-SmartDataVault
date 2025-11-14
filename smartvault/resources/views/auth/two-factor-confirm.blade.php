@@ -7,24 +7,33 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 min-h-screen flex items-center justify-center px-4">
+<body class="min-h-screen flex items-center justify-center px-4 relative overflow-hidden" 
+      style="background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%); background-size: 400% 400%; animation: gradient 15s ease infinite;">
     
-    <div class="max-w-md w-full">
+    <!-- Animated Background Overlay -->
+    <div class="absolute inset-0 bg-black/20 dark:bg-black/40"></div>
+    
+    <!-- Decorative Elements -->
+    <div class="absolute top-0 left-0 w-72 h-72 bg-blue-400/30 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+    <div class="absolute top-0 right-0 w-72 h-72 bg-purple-400/30 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+    <div class="absolute -bottom-8 left-20 w-72 h-72 bg-pink-400/30 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+    
+    <div class="relative z-10 max-w-md w-full">
         <!-- Logo/Header -->
         <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-600 to-emerald-600 rounded-2xl shadow-lg mb-4">
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-lg rounded-2xl shadow-2xl mb-4 border border-white/30">
                 <i class="fas fa-shield-alt text-white text-3xl"></i>
             </div>
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+            <h1 class="text-3xl font-bold text-white mb-2 drop-shadow-lg">
                 {{ __('Confirm Two Factor Authentication') }}
             </h1>
-            <p class="text-gray-600 dark:text-gray-400">
+            <p class="text-white/90 drop-shadow">
                 {{ __('Please confirm access to your account by entering the authentication code provided by your authenticator application.') }}
             </p>
         </div>
 
         <!-- Card -->
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 border border-gray-100 dark:border-gray-700">
+        <div class="bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-2xl shadow-2xl p-8 border border-white/20 dark:border-gray-700/50">
             
             @if (session('status'))
                 <div class="mb-6 bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 p-4 rounded-lg">
@@ -94,13 +103,40 @@
         </div>
 
         <!-- Footer -->
-        <div class="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
+        <div class="mt-8 text-center text-sm text-white/80 drop-shadow">
             <p>
                 <i class="fas fa-shield-alt mr-2"></i>
                 {{ __('SmartDataVault - Secure Authentication') }}
             </p>
         </div>
     </div>
+
+    <style>
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+
+        .animate-blob {
+            animation: blob 7s infinite;
+        }
+
+        .animation-delay-2000 {
+            animation-delay: 2s;
+        }
+
+        .animation-delay-4000 {
+            animation-delay: 4s;
+        }
+    </style>
 
     <script>
         // Auto-focus and format code input
