@@ -6,39 +6,34 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up()
+    public function up(): void
     {
         Schema::create('encrypted_files', function (Blueprint $table) {
             $table->id();
             
-            // Informations de base du fichier
             $table->string('original_name');
             $table->integer('file_size');
-            $table->string('file_type'); // pdf, txt, doc, etc.
+            $table->string('file_type');
+            $table->string('file_category')->default('text');
             
-            // Contenu chiffré
             $table->text('encrypted_content');
             
-            // Chiffrement
             $table->string('encryption_method')->default('aes-256');
-            $table->text('encryption_key'); // Clé chiffrée avec Crypt
-            $table->text('iv')->nullable(); // Vecteur d'initialisation
+            $table->text('encryption_key');
+            $table->text('iv')->nullable();
             
-            // Sécurité
             $table->string('file_hash');
             
-            // Relations
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             
-            // Timestamps
+            $table->softDeletes();
             $table->timestamps();
             
-            // Index simples
             $table->index(['user_id', 'created_at']);
         });
     }
 
-    public function down()
+    public function down(): void
     {
         Schema::dropIfExists('encrypted_files');
     }

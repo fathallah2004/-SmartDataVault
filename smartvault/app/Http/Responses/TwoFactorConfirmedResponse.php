@@ -21,5 +21,3 @@ class TwoFactorConfirmedResponse implements TwoFactorConfirmedResponseContract
             : redirect()->route('profile.edit')->with('status', 'two-factor-authentication-confirmed');
     }
 }
-
-

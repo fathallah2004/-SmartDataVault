@@ -46,7 +46,6 @@ class LoginRequest extends FormRequest
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
-            // Store email in session for forgot password functionality
             $email = $this->string('email');
             $this->session()->put('login_email', $email);
 
@@ -55,12 +54,10 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        // Clear email from session on successful login
         $this->session()->forget('login_email');
 
         RateLimiter::clear($this->throttleKey());
     }
-
 
     /**
      * Ensure the login request is not rate limited.

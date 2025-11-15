@@ -46,29 +46,20 @@ class EncryptionTestController extends Controller
             $algorithm = $request->algorithm;
             $customKey = $request->key;
 
-            // Préparer la clé selon l'algorithme
             $key = $this->prepareKey($customKey, $algorithm);
-
-            // Chiffrer le texte
             $encrypted = $this->encryptionService->encryptText($text, $algorithm);
 
-            // Si une clé personnalisée est fournie, l'utiliser
             if ($key !== null) {
-                // Recréer le chiffrement avec la clé personnalisée
                 $encrypted = $this->encryptWithCustomKey($text, $algorithm, $key);
             }
 
-            // Déchiffrer pour vérification
             $decrypted = $this->encryptionService->decryptText(
                 $encrypted['encrypted_content'],
                 $encrypted['key'],
                 $algorithm
             );
 
-            // Vérifier l'intégrité
             $integrity = $text === $decrypted;
-            
-            // Décoder le contenu chiffré pour afficher le texte brut
             $encryptedTextRaw = base64_decode($encrypted['encrypted_content'], true);
 
             return response()->json([
@@ -181,21 +172,18 @@ class EncryptionTestController extends Controller
                 return is_numeric($customKey) ? (int)$customKey : (int)$customKey;
             
             case 'vigenere':
-                // Normaliser la clé Vigenère : convertir les chiffres en lettres et garder les lettres
                 $normalizedKey = '';
                 for ($i = 0; $i < strlen($customKey); $i++) {
                     $char = $customKey[$i];
                     if (ctype_alpha($char)) {
                         $normalizedKey .= strtoupper($char);
                     } elseif (ctype_digit($char)) {
-                        // Convertir les chiffres en lettres (0=A, 1=B, ..., 9=J)
                         $normalizedKey .= chr(65 + (int)$char);
                     }
                 }
                 return !empty($normalizedKey) ? $normalizedKey : strtoupper($customKey);
             
             case 'substitution':
-                // Vérifier que c'est une permutation de l'alphabet
                 if (strlen($customKey) === 26 && ctype_alpha($customKey)) {
                     return strtolower($customKey);
                 }
@@ -214,7 +202,6 @@ class EncryptionTestController extends Controller
      */
     private function encryptWithCustomKey(string $text, string $algorithm, $key): array
     {
-        // Implémentation manuelle pour chaque algorithme avec clé personnalisée
         switch ($algorithm) {
             case 'cesar':
                 return $this->encryptCesarCustom($text, $key);
@@ -253,13 +240,11 @@ class EncryptionTestController extends Controller
             $char = $text[$i];
             $ascii = ord($char);
             
-            // Vérifier si c'est une lettre latine (a-z, A-Z)
             if (ctype_alpha($char)) {
                 $isUpper = ctype_upper($char);
                 $base = $isUpper ? 65 : 97;
                 $encrypted .= chr(($ascii - $base + $shift) % 26 + $base);
             } else {
-                // Conserver les caractères spéciaux, accents, etc.
                 $encrypted .= $char;
             }
         }
@@ -280,8 +265,6 @@ class EncryptionTestController extends Controller
     {
         $encrypted = '';
         $keyIndex = 0;
-        
-        // Normaliser la clé (convertir en majuscules)
         $key = strtoupper($key);
         $keyLen = strlen($key);
         
@@ -289,14 +272,12 @@ class EncryptionTestController extends Controller
             throw new \Exception('Clé Vigenère invalide - doit contenir au moins une lettre');
         }
         
-        // Utiliser strlen pour être cohérent avec le service principal
         $length = strlen($text);
         
         for ($i = 0; $i < $length; $i++) {
             $char = $text[$i];
             $ascii = ord($char);
             
-            // Vérifier si c'est une lettre latine (a-z, A-Z)
             if (ctype_alpha($char)) {
                 $isUpper = ctype_upper($char);
                 $base = $isUpper ? 65 : 97;
@@ -307,7 +288,6 @@ class EncryptionTestController extends Controller
                 $encrypted .= chr(($ascii - $base + $keyShift) % 26 + $base);
                 $keyIndex++;
             } else {
-                // Conserver les caractères spéciaux, accents, etc.
                 $encrypted .= $char;
             }
         }
@@ -326,7 +306,6 @@ class EncryptionTestController extends Controller
      */
     private function encryptXorCustom(string $text, string $key): array
     {
-        // S'assurer que la clé est en UTF-8
         $textBytes = mb_convert_encoding($text, 'UTF-8', 'UTF-8');
         $keyBytes = mb_convert_encoding($key, 'UTF-8', 'UTF-8');
         $textLen = strlen($textBytes);
@@ -339,13 +318,12 @@ class EncryptionTestController extends Controller
         $encrypted = '';
         for ($i = 0; $i < $textLen; $i++) {
             $byte = ord($textBytes[$i]) ^ ord($keyBytes[$i % $keyLen]);
-            // S'assurer que le résultat est un octet valide (0-255)
             $encrypted .= chr($byte & 0xFF);
         }
         
         return [
             'encrypted_content' => base64_encode($encrypted),
-            'key' => base64_encode($keyBytes), // Encoder la clé en base64 comme dans le service principal
+            'key' => base64_encode($keyBytes),
             'iv' => null,
             'hash' => hash('sha256', $encrypted),
             'method' => 'xor-text'
@@ -360,7 +338,6 @@ class EncryptionTestController extends Controller
         $alphabet = 'abcdefghijklmnopqrstuvwxyz';
         $substitution = strtolower($key);
         
-        // Vérifier que la clé est valide (26 lettres)
         if (strlen($substitution) !== 26 || !ctype_alpha($substitution)) {
             throw new \Exception('Clé de substitution invalide - doit être un alphabet mélangé de 26 lettres');
         }
@@ -371,7 +348,6 @@ class EncryptionTestController extends Controller
         for ($i = 0; $i < $length; $i++) {
             $char = $text[$i];
             
-            // Vérifier si c'est une lettre latine (a-z, A-Z)
             if (ctype_alpha($char)) {
                 $lowerChar = strtolower($char);
                 $pos = strpos($alphabet, $lowerChar);
@@ -382,7 +358,6 @@ class EncryptionTestController extends Controller
                     $encrypted .= $char;
                 }
             } else {
-                // Conserver les caractères spéciaux, accents, etc.
                 $encrypted .= $char;
             }
         }
@@ -406,9 +381,7 @@ class EncryptionTestController extends Controller
             throw new \Exception('Décalage Reverse invalide - doit être entre 1 et 10');
         }
         
-        // Inverser la chaîne
         $reversed = strrev($text);
-        
         $encrypted = '';
         $length = strlen($reversed);
         
@@ -416,13 +389,11 @@ class EncryptionTestController extends Controller
             $char = $reversed[$i];
             $ascii = ord($char);
             
-            // Vérifier si c'est une lettre latine (a-z, A-Z)
             if (ctype_alpha($char)) {
                 $isUpper = ctype_upper($char);
                 $base = $isUpper ? 65 : 97;
                 $encrypted .= chr(($ascii - $base + $shift) % 26 + $base);
             } else {
-                // Conserver les caractères spéciaux, accents, etc.
                 $encrypted .= $char;
             }
         }

@@ -21,7 +21,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Update last_login_at when user logs in (works for both regular and 2FA logins)
         Event::listen(Login::class, function (Login $event) {
             if ($event->user) {
                 $event->user->forceFill(['last_login_at' => now()])->save();

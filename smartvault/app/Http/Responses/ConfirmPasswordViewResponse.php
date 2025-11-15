@@ -18,5 +18,3 @@ class ConfirmPasswordViewResponse implements ConfirmPasswordViewResponseContract
         return view('auth.confirm-password');
     }
 }
-
-

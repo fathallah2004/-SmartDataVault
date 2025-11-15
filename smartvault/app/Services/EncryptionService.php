@@ -268,35 +268,20 @@ class EncryptionService
             throw new \Exception('Extension GD requise pour le chiffrement d\'images');
         }
 
-        // Augmenter temporairement la limite de mémoire pour les grandes images
         $originalMemoryLimit = ini_get('memory_limit');
         ini_set('memory_limit', '512M');
 
-        // Détecter le type d'image
         $imageType = $this->detectImageType($imageData);
-        
-        // Générer une clé AES de 32 bytes (256 bits)
         $key = random_bytes(32);
-        
-        // Générer un nonce unique de 8 bytes
         $nonce = random_bytes(8);
-        
-        // Chiffrer directement les bytes bruts de l'image avec AES-CTR
         $encryptedBytes = $this->aesCtrEncrypt($imageData, $key, $nonce);
         
-        // Convertir les bytes chiffrés en image valide pour l'affichage
-        // Calculer les dimensions nécessaires pour stocker tous les bytes
         $totalBytes = strlen($encryptedBytes);
-        // Chaque pixel peut stocker 3 bytes (RGB), donc on a besoin de totalBytes/3 pixels
         $pixelsNeeded = (int)ceil($totalBytes / 3);
-        // Calculer les dimensions (carré approximatif)
         $width = (int)ceil(sqrt($pixelsNeeded));
         $height = (int)ceil($pixelsNeeded / $width);
         
-        // Créer une image pour stocker les bytes chiffrés
         $encImg = imagecreatetruecolor($width, $height);
-        
-        // Remplir l'image avec les bytes chiffrés
         $byteIndex = 0;
         $bytesLen = strlen($encryptedBytes);
         for ($y = 0; $y < $height; $y++) {
@@ -307,21 +292,17 @@ class EncryptionService
                     $b = ($byteIndex < $bytesLen) ? ord($encryptedBytes[$byteIndex++]) : 0;
                     $color = imagecolorallocate($encImg, $r, $g, $b);
                 } else {
-                    // Remplir avec du noir pour les pixels restants
                     $color = imagecolorallocate($encImg, 0, 0, 0);
                 }
                 imagesetpixel($encImg, $x, $y, $color);
             }
         }
         
-        // Sauvegarder l'image chiffrée en PNG (format lossless)
         ob_start();
         imagepng($encImg, null, 0, PNG_NO_FILTER);
         $encryptedImage = ob_get_clean();
         imagedestroy($encImg);
         
-        // Préparer les métadonnées (nonce + taille de l'image originale + type d'image + dimensions)
-        // Format: nonce (8 bytes) + imageSize (4 bytes big-endian) + imageType (1 byte) + width (4 bytes) + height (4 bytes)
         $imageSize = strlen($imageData);
         $imageTypeCode = match($imageType) {
             'png' => 1,
@@ -338,14 +319,12 @@ class EncryptionService
                    pack('N', $width) .
                    pack('N', $height);
         
-        // Restaurer la limite de mémoire originale
         ini_set('memory_limit', $originalMemoryLimit);
         
-        // Stocker la clé et les métadonnées
         return [
             'encrypted_content' => base64_encode($encryptedImage),
             'key' => base64_encode($key),
-            'iv' => base64_encode($metadata), // Stocker les métadonnées dans le champ iv
+            'iv' => base64_encode($metadata),
             'hash' => hash('sha256', $encryptedImage),
             'method' => 'aes-ctr-image'
         ];
@@ -361,7 +340,6 @@ class EncryptionService
             throw new \Exception('Extension GD requise pour le déchiffrement d\'images');
         }
 
-        // Augmenter temporairement la limite de mémoire pour les grandes images
         $originalMemoryLimit = ini_get('memory_limit');
         ini_set('memory_limit', '512M');
 
@@ -374,7 +352,6 @@ class EncryptionService
             throw new \Exception('Clé invalide (doit être 32 bytes)');
         }
         
-        // Lire les métadonnées
         if ($iv === null) {
             throw new \Exception('Métadonnées (nonce, taille) requises pour le déchiffrement');
         }
@@ -384,14 +361,12 @@ class EncryptionService
             throw new \Exception('Métadonnées invalides');
         }
         
-        // Extraire nonce, taille, type d'image et dimensions
         $nonce = substr($metadata, 0, 8);
         $imageSize = unpack('N', substr($metadata, 8, 4))[1];
         $imageTypeCode = ord($metadata[12]);
         $width = unpack('N', substr($metadata, 13, 4))[1];
         $height = unpack('N', substr($metadata, 17, 4))[1];
         
-        // Convertir le code en type d'image
         $originalImageType = match($imageTypeCode) {
             1 => 'png',
             2 => 'jpeg',
@@ -402,13 +377,11 @@ class EncryptionService
             default => 'jpeg'
         };
         
-        // Charger l'image chiffrée et extraire les bytes
         $encImg = @imagecreatefromstring($encrypted);
         if ($encImg === false) {
             throw new \Exception('Impossible de charger l\'image chiffrée');
         }
         
-        // Vérifier les dimensions
         $encWidth = imagesx($encImg);
         $encHeight = imagesy($encImg);
         
@@ -417,7 +390,6 @@ class EncryptionService
             throw new \Exception("Dimensions de l'image chiffrée ne correspondent pas");
         }
         
-        // Extraire les bytes chiffrés depuis les pixels
         $encryptedBytes = '';
         $bytesExtracted = 0;
         for ($y = 0; $y < $height && $bytesExtracted < $imageSize; $y++) {
@@ -427,7 +399,6 @@ class EncryptionService
                 $g = ($rgb >> 8) & 0xFF;
                 $b = $rgb & 0xFF;
                 
-                // Ajouter les bytes un par un jusqu'à atteindre la taille originale
                 if ($bytesExtracted < $imageSize) {
                     $encryptedBytes .= chr($r);
                     $bytesExtracted++;
@@ -444,18 +415,14 @@ class EncryptionService
         }
         imagedestroy($encImg);
         
-        // Déchiffrer les bytes avec AES-CTR
         $decryptedBytes = $this->aesCtrDecrypt($encryptedBytes, $keyBytes, $nonce);
         
-        // Vérifier que la taille correspond
         if (strlen($decryptedBytes) !== $imageSize) {
             throw new \Exception("Taille de l'image déchiffrée ne correspond pas (attendu: {$imageSize} bytes, obtenu: " . strlen($decryptedBytes) . " bytes)");
         }
         
-        // Restaurer la limite de mémoire originale
         ini_set('memory_limit', $originalMemoryLimit);
         
-        // Retourner directement les bytes déchiffrés (image originale exacte)
         return $decryptedBytes;
     }
 
@@ -505,7 +472,6 @@ class EncryptionService
      */
     private function aesCtrDecrypt($ciphertext, $key, $nonce)
     {
-        // CTR mode: déchiffrement = chiffrement (XOR est symétrique)
         return $this->aesCtrEncrypt($ciphertext, $key, $nonce);
     }
 
@@ -521,27 +487,22 @@ class EncryptionService
         
         $signature = substr($imageData, 0, 4);
         
-        // JPEG: FF D8 FF
         if (substr($imageData, 0, 3) === "\xFF\xD8\xFF") {
             return 'jpeg';
         }
         
-        // PNG: 89 50 4E 47
         if ($signature === "\x89\x50\x4E\x47") {
             return 'png';
         }
         
-        // GIF: 47 49 46 38
         if (substr($imageData, 0, 6) === "GIF89a" || substr($imageData, 0, 6) === "GIF87a") {
             return 'gif';
         }
         
-        // WEBP: RIFF...WEBP
         if (substr($imageData, 0, 4) === "RIFF" && strpos($imageData, "WEBP", 8) !== false) {
             return 'webp';
         }
         
-        // BMP: BM
         if (substr($imageData, 0, 2) === "BM") {
             return 'bmp';
         }
@@ -556,44 +517,27 @@ class EncryptionService
     {
         switch ($imageType) {
             case 'jpeg':
-                // Pour JPEG, préserver tous les segments jusqu'aux données de scan (FF DA)
-                // On doit aussi préserver les marqueurs de fin de segment (FF D9)
                 $startOfScan = strpos($imageData, "\xFF\xDA");
                 if ($startOfScan !== false) {
-                    // Préserver jusqu'au début des données de scan + 2 bytes pour le marqueur
-                    // Mais ne pas chiffrer les marqueurs FF dans les données
                     return $startOfScan + 2;
                 }
-                // Si pas trouvé, préserver au moins 1000 bytes (probablement tout l'en-tête)
                 return min(1000, strlen($imageData));
                 
             case 'png':
-                // PNG: préserver la signature (8) + tous les chunks jusqu'aux données IDAT
-                // Les chunks PNG ont une structure: length (4) + type (4) + data + CRC (4)
                 $pos = strpos($imageData, "IDAT");
                 if ($pos !== false) {
-                    // Préserver jusqu'au début du chunk IDAT + 8 bytes (length + type)
                     return $pos + 8;
                 }
-                // Si pas trouvé, préserver au moins 100 bytes
                 return min(100, strlen($imageData));
                 
             case 'gif':
-                // GIF: préserver signature (6) + Logical Screen Descriptor (7) + Global Color Table (si présente)
-                // Pour simplifier, préserver les 100 premiers bytes
-                return min(100, strlen($imageData));
-                
             case 'webp':
-                // WEBP: préserver le header RIFF (12) + le header VP8/VP8L
-                // Pour simplifier, préserver les 100 premiers bytes
                 return min(100, strlen($imageData));
                 
             case 'bmp':
-                // BMP: header fixe de 54 bytes
                 return 54;
                 
             default:
-                // Pour les formats inconnus, préserver les 200 premiers bytes (plus sûr)
                 return min(200, strlen($imageData));
         }
     }
@@ -606,7 +550,6 @@ class EncryptionService
         $key = $this->generateRandomKey(32);
         $keyBytes = $key;
         
-        // Préserver les 100 premiers bytes (probablement l'en-tête)
         $headerLength = min(100, strlen($imageData));
         $header = substr($imageData, 0, $headerLength);
         $data = substr($imageData, $headerLength);
@@ -622,12 +565,8 @@ class EncryptionService
         return $this->buildEncryptionResult($header . $encrypted, base64_encode($keyBytes), 'xor-image');
     }
 
-    /**
-     * Déchiffrement simple pour les formats non reconnus
-     */
     private function decryptImageSimple($encrypted, $keyBytes)
     {
-        // Préserver les 100 premiers bytes
         $headerLength = min(100, strlen($encrypted));
         $header = substr($encrypted, 0, $headerLength);
         $encryptedData = substr($encrypted, $headerLength);

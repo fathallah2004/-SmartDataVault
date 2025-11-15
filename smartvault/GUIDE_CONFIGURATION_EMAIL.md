@@ -1,4 +1,4 @@
-# 📧 Guide : Configurer l'envoi d'emails
+# 📧 Guide de Configuration Email - SmartDataVault
 
 ## ⚠️ Problème actuel
 Les emails sont enregistrés dans les logs au lieu d'être envoyés. Vous devez configurer l'envoi d'emails.
@@ -7,14 +7,31 @@ Les emails sont enregistrés dans les logs au lieu d'être envoyés. Vous devez 
 
 ## ✅ Solution : Étapes à suivre
 
-### **Étape 1 : Ouvrir le fichier .env**
+### **Méthode 1 : Script PowerShell (Recommandé)**
 
-1. Allez dans le dossier du projet : `C:\Users\fatha\Herd\-SmartDataVault\smartvault`
-2. Ouvrez le fichier `.env` avec un éditeur de texte (Notepad++, VS Code, etc.)
+Exécutez simplement :
+```powershell
+.\configure-email.ps1
+```
 
-### **Étape 2 : Configurer l'email SMTP**
+Le script vous guidera pour configurer votre email.
 
-Ajoutez ou modifiez ces lignes dans votre fichier `.env` :
+**Options avancées :**
+```powershell
+# Gmail
+.\configure-email.ps1 -Email "votre-email@gmail.com" -Password "app-password" -Provider "gmail"
+
+# Outlook
+.\configure-email.ps1 -Email "votre-email@outlook.com" -Password "votre-mot-de-passe" -Provider "outlook"
+
+# Mailtrap (pour développement)
+.\configure-email.ps1 -Email "votre-username" -Password "votre-password" -Provider "mailtrap"
+```
+
+### **Méthode 2 : Configuration manuelle**
+
+1. Ouvrez le fichier `.env` à la racine du projet
+2. Ajoutez/modifiez ces lignes :
 
 #### **Option A : Gmail (Recommandé pour les tests)**
 
@@ -69,12 +86,14 @@ MAIL_FROM_NAME="SmartDataVault"
 
 ### **Étape 3 : Vider le cache**
 
-Après avoir modifié le `.env`, exécutez ces commandes dans le terminal :
+Après avoir modifié le `.env`, exécutez ces commandes :
 
 ```bash
 php artisan config:clear
 php artisan cache:clear
 ```
+
+Ou utilisez le script PowerShell qui le fait automatiquement.
 
 ### **Étape 4 : Tester**
 
@@ -105,20 +124,16 @@ php artisan cache:clear
 
 ---
 
-## 📝 Exemple complet de configuration .env
+## 🛠️ Commandes utiles
 
-```env
-# ... autres configurations ...
+### Réinitialiser le mot de passe d'un utilisateur :
+```bash
+php artisan user:reset-password email@example.com
+```
 
-# Configuration Email
-MAIL_MAILER=smtp
-MAIL_HOST=smtp.gmail.com
-MAIL_PORT=587
-MAIL_USERNAME=monemail@gmail.com
-MAIL_PASSWORD=abcd efgh ijkl mnop
-MAIL_ENCRYPTION=tls
-MAIL_FROM_ADDRESS=monemail@gmail.com
-MAIL_FROM_NAME="SmartDataVault"
+### Réinitialiser et envoyer par email :
+```bash
+php artisan user:reset-password email@example.com --send-email
 ```
 
 ---
@@ -130,4 +145,3 @@ Si vous avez des problèmes :
 2. Vérifiez que vous avez exécuté `php artisan config:clear`
 3. Consultez les logs dans `storage/logs/laravel.log`
 4. Essayez Mailtrap pour tester facilement
-

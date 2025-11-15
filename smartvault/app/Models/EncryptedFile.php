@@ -29,9 +29,6 @@ class EncryptedFile extends Model
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Chiffre automatiquement la clé avant de la sauvegarder dans la base de données
-     */
     public function setEncryptionKeyAttribute($value)
     {
         if (empty($value)) {
@@ -39,38 +36,24 @@ class EncryptedFile extends Model
             return;
         }
         
-        // Vérifier si la valeur est déjà chiffrée (commence par "eyJ" = base64 de JSON)
-        // Les valeurs chiffrées par Laravel Crypt ont une structure spécifique
-        if ($this->isAlreadyEncrypted($value)) {
-            $this->attributes['encryption_key'] = $value;
-        } else {
-            // Chiffrer la clé avec Laravel Crypt (utilise APP_KEY)
-            $this->attributes['encryption_key'] = Crypt::encryptString($value);
+        $this->attributes['encryption_key'] = $this->isAlreadyEncrypted($value) 
+            ? $value 
+            : Crypt::encryptString($value);
         }
-    }
 
-    /**
-     * Déchiffre automatiquement la clé lors de la récupération depuis la base de données
-     */
     public function getEncryptionKeyAttribute($value)
     {
         if (empty($value)) {
             return $value;
         }
         
-        // Essayer de déchiffrer (si c'est une clé chiffrée avec Laravel Crypt)
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
-            // Si le déchiffrement échoue, c'est probablement une ancienne clé en base64
-            // Retourner la valeur telle quelle pour la compatibilité avec les anciennes données
             return $value;
         }
     }
 
-    /**
-     * Chiffre automatiquement l'IV avant de la sauvegarder dans la base de données
-     */
     public function setIvAttribute($value)
     {
         if (empty($value)) {
@@ -78,16 +61,11 @@ class EncryptedFile extends Model
             return;
         }
         
-        if ($this->isAlreadyEncrypted($value)) {
-            $this->attributes['iv'] = $value;
-        } else {
-            $this->attributes['iv'] = Crypt::encryptString($value);
+        $this->attributes['iv'] = $this->isAlreadyEncrypted($value) 
+            ? $value 
+            : Crypt::encryptString($value);
         }
-    }
 
-    /**
-     * Déchiffre automatiquement l'IV lors de la récupération depuis la base de données
-     */
     public function getIvAttribute($value)
     {
         if (empty($value)) {
@@ -97,23 +75,13 @@ class EncryptedFile extends Model
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
-            // Compatibilité avec les anciennes données
             return $value;
         }
     }
 
-    /**
-     * Vérifie si une chaîne est déjà chiffrée avec Laravel Crypt
-     * Les valeurs chiffrées par Laravel commencent par "eyJ" (base64 de {"iv":...})
-     */
     private function isAlreadyEncrypted($value): bool
     {
-        if (empty($value) || strlen($value) < 20) {
-            return false;
-        }
-        
-        // Les valeurs chiffrées par Laravel Crypt commencent par "eyJ" (base64 de JSON)
-        return str_starts_with($value, 'eyJ');
+        return !empty($value) && strlen($value) >= 20 && str_starts_with($value, 'eyJ');
     }
 
     public function getDecryptionKey()
@@ -145,10 +113,18 @@ class EncryptedFile extends Model
             return match($this->encryption_method) {
                 'aes-ctr-image' => 'AES-CTR Image',
                 'aes-image' => 'AES-CBC Image',
+                'xor-image' => 'XOR Image',
                 default => 'AES-CTR Image'
             };
         }
-        return ['cesar' => 'César', 'vigenere' => 'Vigenère', 'xor-text' => 'XOR Textuel', 'xor-image' => 'XOR Image', 'substitution' => 'Substitution', 'reverse' => 'Inversion'][$this->encryption_method] ?? $this->encryption_method;
+        
+        return [
+            'cesar' => 'César',
+            'vigenere' => 'Vigenère',
+            'xor-text' => 'XOR Textuel',
+            'substitution' => 'Substitution',
+            'reverse' => 'Inversion'
+        ][$this->encryption_method] ?? $this->encryption_method;
     }
 
     public function isEncrypted()

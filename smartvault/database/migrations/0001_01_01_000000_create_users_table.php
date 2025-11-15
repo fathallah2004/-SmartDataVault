@@ -18,6 +18,21 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();
+            
+            $table->string('role')->default('user')->after('password');
+            $table->index('role');
+            
+            $table->text('two_factor_secret')->nullable()->after('password');
+            $table->text('two_factor_recovery_codes')->nullable()->after('two_factor_secret');
+            $table->timestamp('two_factor_confirmed_at')->nullable()->after('two_factor_recovery_codes');
+            
+            $table->integer('total_files_encrypted')->default(0);
+            $table->bigInteger('total_storage_used')->default(0);
+            $table->timestamp('last_upload_at')->nullable();
+            $table->timestamp('last_login_at')->nullable();
+            
+            $table->softDeletes();
+            
             $table->timestamps();
         });
 
@@ -42,8 +57,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('users');
-        Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('users');
     }
 };

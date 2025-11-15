@@ -39,5 +39,3 @@ class TwoFactorAuthenticationController extends Controller
         return back()->with('status', 'two-factor-authentication-disabled');
     }
 }
-
-

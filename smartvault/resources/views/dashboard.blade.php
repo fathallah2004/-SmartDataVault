@@ -276,26 +276,16 @@
                                                     {{ $file->original_name }}
                                                 </h4>
                                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                    @if($file->file_category === 'image')
-                                                        Image • XOR
-                                                    @else
                                                     {{ $file->algorithm_name }}
-                                                    @endif
                                                 </p>
                                             </div>
                                         </div>
 
                                         <div class="flex items-center justify-end w-full lg:w-[580px] flex-shrink-0 space-x-6">
                                             <div class="w-32 text-center">
-                                                @if($file->file_category === 'image')
-                                                    <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border border-purple-200">
-                                                        XOR Image
-                                                    </span>
-                                                @else
-                                                <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {{ $algorithmStyles[$file->encryption_method] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 border border-gray-200' }}">
+                                                <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium {{ $file->file_category === 'image' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border border-purple-200' : ($algorithmStyles[$file->encryption_method] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 border border-gray-200') }}">
                                                     {{ $file->algorithm_name }}
                                                 </span>
-                                                @endif
                                             </div>
 
                                             <div class="w-24 text-center text-gray-600 dark:text-gray-300 text-sm font-medium">

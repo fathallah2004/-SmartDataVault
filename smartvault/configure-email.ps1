@@ -1,25 +1,66 @@
-# Script interactif pour configurer l'email Gmail
-# Mot de passe d'application: oxwnuehrnjtcmbyi
+# Script pour configurer l'email dans .env
+# Usage: .\configure-email.ps1 [-Email "email@gmail.com"] [-Password "app-password"] [-Provider "gmail|outlook|mailtrap"]
 
-$password = "oxwnuehrnjtcmbyi"
+param(
+    [string]$Email,
+    [string]$Password,
+    [ValidateSet("gmail", "outlook", "mailtrap")]
+    [string]$Provider = "gmail"
+)
+
 $envFile = ".env"
-
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "Configuration Email Gmail" -ForegroundColor Cyan
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host ""
 
 if (-not (Test-Path $envFile)) {
     Write-Host "Erreur: Le fichier .env n'existe pas!" -ForegroundColor Red
     exit 1
 }
 
-# Demander l'email
-$email = Read-Host "Entrez votre adresse email Gmail (ex: monemail@gmail.com)"
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "Configuration Email - SmartDataVault" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
 
-if ([string]::IsNullOrWhiteSpace($email)) {
+# Configuration par provider
+$config = @{
+    "gmail" = @{
+        Host = "smtp.gmail.com"
+        Port = 587
+        Encryption = "tls"
+    }
+    "outlook" = @{
+        Host = "smtp-mail.outlook.com"
+        Port = 587
+        Encryption = "tls"
+    }
+    "mailtrap" = @{
+        Host = "smtp.mailtrap.io"
+        Port = 2525
+        Encryption = "tls"
+    }
+}
+
+$mailConfig = $config[$Provider]
+
+# Demander l'email si non fourni
+if ([string]::IsNullOrWhiteSpace($Email)) {
+    $Email = Read-Host "Entrez votre adresse email"
+    if ([string]::IsNullOrWhiteSpace($Email)) {
     Write-Host "Erreur: L'email ne peut pas être vide!" -ForegroundColor Red
     exit 1
+    }
+}
+
+# Demander le mot de passe si non fourni
+if ([string]::IsNullOrWhiteSpace($Password)) {
+    if ($Provider -eq "gmail") {
+        Write-Host "Pour Gmail, vous devez utiliser un 'Mot de passe d'application'" -ForegroundColor Yellow
+        Write-Host "Créez-en un ici: https://myaccount.google.com/apppasswords" -ForegroundColor Yellow
+    }
+    $Password = Read-Host "Entrez le mot de passe (ou mot de passe d'application)" -AsSecureString
+    $Password = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+        [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Password)
+    )
 }
 
 Write-Host ""
@@ -28,100 +69,61 @@ Write-Host "Mise à jour de la configuration..." -ForegroundColor Yellow
 # Lire le contenu
 $content = Get-Content $envFile
 $newContent = @()
+$mailKeys = @{
+    "MAIL_MAILER" = "smtp"
+    "MAIL_HOST" = $mailConfig.Host
+    "MAIL_PORT" = $mailConfig.Port.ToString()
+    "MAIL_USERNAME" = $Email
+    "MAIL_PASSWORD" = $Password
+    "MAIL_ENCRYPTION" = $mailConfig.Encryption
+    "MAIL_FROM_ADDRESS" = $Email
+    "MAIL_FROM_NAME" = "SmartDataVault"
+}
 
-$mailEncryptionExists = $false
-$mailFromAddressExists = $false
-$mailFromNameExists = $false
+$foundKeys = @{}
 
 foreach ($line in $content) {
-    if ($line -match "^MAIL_MAILER=") {
-        $newContent += "MAIL_MAILER=smtp"
+    $updated = $false
+    foreach ($key in $mailKeys.Keys) {
+        if ($line -match "^$key=") {
+            $newContent += "$key=$($mailKeys[$key])"
+            $foundKeys[$key] = $true
+            $updated = $true
+            break
+        }
     }
-    elseif ($line -match "^MAIL_HOST=") {
-        $newContent += "MAIL_HOST=smtp.gmail.com"
-    }
-    elseif ($line -match "^MAIL_PORT=") {
-        $newContent += "MAIL_PORT=587"
-    }
-    elseif ($line -match "^MAIL_USERNAME=") {
-        $newContent += "MAIL_USERNAME=$email"
-    }
-    elseif ($line -match "^MAIL_PASSWORD=") {
-        $newContent += "MAIL_PASSWORD=$password"
-    }
-    elseif ($line -match "^MAIL_ENCRYPTION=") {
-        $newContent += "MAIL_ENCRYPTION=tls"
-        $mailEncryptionExists = $true
-    }
-    elseif ($line -match "^MAIL_FROM_ADDRESS=") {
-        $newContent += "MAIL_FROM_ADDRESS=$email"
-        $mailFromAddressExists = $true
-    }
-    elseif ($line -match "^MAIL_FROM_NAME=") {
-        $newContent += "MAIL_FROM_NAME=`"SmartDataVault`""
-        $mailFromNameExists = $true
-    }
-    else {
+    if (-not $updated) {
         $newContent += $line
     }
 }
 
-# Ajouter les lignes manquantes si elles n'existent pas
-if (-not $mailEncryptionExists) {
-    # Trouver où insérer (après MAIL_PASSWORD)
-    $insertIndex = -1
-    for ($i = 0; $i -lt $newContent.Length; $i++) {
-        if ($newContent[$i] -match "^MAIL_PASSWORD=") {
-            $insertIndex = $i + 1
-            break
-        }
+# Ajouter les clés manquantes
+foreach ($key in $mailKeys.Keys) {
+    if (-not $foundKeys.ContainsKey($key)) {
+        $newContent += "$key=$($mailKeys[$key])"
     }
-    if ($insertIndex -ge 0) {
-        $newContent = $newContent[0..($insertIndex-1)] + "MAIL_ENCRYPTION=tls" + $newContent[$insertIndex..($newContent.Length-1)]
-    } else {
-        $newContent += "MAIL_ENCRYPTION=tls"
-    }
-}
-
-if (-not $mailFromAddressExists) {
-    $newContent += "MAIL_FROM_ADDRESS=$email"
-}
-
-if (-not $mailFromNameExists) {
-    $newContent += "MAIL_FROM_NAME=`"SmartDataVault`""
 }
 
 # Écrire le nouveau contenu
 $newContent | Set-Content $envFile
 
-Write-Host ""
 Write-Host "✓ Configuration email mise à jour avec succès!" -ForegroundColor Green
 Write-Host ""
 Write-Host "Configuration:" -ForegroundColor Cyan
-Write-Host "  Email: $email" -ForegroundColor White
-Write-Host "  Host: smtp.gmail.com" -ForegroundColor White
-Write-Host "  Port: 587" -ForegroundColor White
-Write-Host "  Encryption: tls" -ForegroundColor White
-Write-Host ""
-Write-Host "Étape suivante: Vider le cache..." -ForegroundColor Yellow
+Write-Host "  Provider: $Provider" -ForegroundColor White
+Write-Host "  Email: $Email" -ForegroundColor White
+Write-Host "  Host: $($mailConfig.Host)" -ForegroundColor White
+Write-Host "  Port: $($mailConfig.Port)" -ForegroundColor White
+Write-Host "  Encryption: $($mailConfig.Encryption)" -ForegroundColor White
 Write-Host ""
 
 # Vider le cache
-Write-Host "Exécution de: php artisan config:clear" -ForegroundColor Gray
-php artisan config:clear
-Write-Host "Exécution de: php artisan cache:clear" -ForegroundColor Gray
-php artisan cache:clear
+Write-Host "Vidage du cache..." -ForegroundColor Yellow
+php artisan config:clear | Out-Null
+php artisan cache:clear | Out-Null
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
 Write-Host "✓ Configuration terminée!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Vous pouvez maintenant tester l'envoi d'email:" -ForegroundColor Yellow
-Write-Host "1. Allez sur votre site" -ForegroundColor White
-Write-Host "2. Essayez de vous connecter avec un mauvais mot de passe" -ForegroundColor White
-Write-Host "3. Cliquez sur 'Forgot Password'" -ForegroundColor White
-Write-Host "4. Cliquez sur 'Send New Password'" -ForegroundColor White
-Write-Host "5. Vérifiez votre boîte email Gmail" -ForegroundColor White
-Write-Host ""
-

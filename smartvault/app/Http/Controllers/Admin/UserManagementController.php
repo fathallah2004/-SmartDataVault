@@ -65,7 +65,6 @@ class UserManagementController extends Controller
 
         $totalStorage = $user->formatted_storage;
 
-        // Pagination des fichiers
         $files = EncryptedFile::where('user_id', $user->id)
             ->whereNull('deleted_at')
             ->orderByDesc('created_at')

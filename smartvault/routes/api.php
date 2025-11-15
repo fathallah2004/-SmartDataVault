@@ -5,7 +5,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['web'])->group(function () {
-    // Routes pour le test de chiffrement
     Route::post('/test-encryption', [EncryptionTestController::class, 'testEncryption']);
     Route::post('/test-decryption', [EncryptionTestController::class, 'testDecryption']);
     Route::post('/algorithm-info', [EncryptionTestController::class, 'getAlgorithmInfo']);

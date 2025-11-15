@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HandlesFileDownloads;
 use App\Models\EncryptedFile;
 use App\Services\EncryptionService;
 use Illuminate\Http\Request;
@@ -9,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
+    use HandlesFileDownloads;
     private $phpwordAvailable;
 
     public function __construct()
@@ -126,20 +128,9 @@ class DashboardController extends Controller
                 return redirect()->route('dashboard')->with('error', 'Formats d\'image supportés: JPG, PNG, GIF, WEBP, BMP, SVG');
             }
 
-            // Lire le contenu de l'image directement (sans compression pour éviter les problèmes de format)
-            // La compression peut causer des problèmes de format, donc on stocke l'original
             $imageData = file_get_contents($file->path());
-            
-            // Optionnel: Compresser seulement si nécessaire (peut causer des problèmes de format)
-            // $compressedData = $this->compressImage($file->path(), $extension);
-            // if ($compressedData !== false && strlen($compressedData) > 0) {
-            //     $imageData = $compressedData;
-            // }
-
-            // Chiffrer l'image
             $encrypted = (new EncryptionService())->encryptImage($imageData);
             
-            // Calculer la taille après compression
             $fileSize = strlen($imageData);
             
             EncryptedFile::create([
@@ -159,79 +150,6 @@ class DashboardController extends Controller
             return redirect()->route('dashboard')->with('success', 'Image "' . $file->getClientOriginalName() . '" chiffrée avec succès !');
         } catch (\Exception $e) {
             return redirect()->route('dashboard')->with('error', $e->getMessage());
-        }
-    }
-
-    private function compressImage($imagePath, $extension)
-    {
-        if (!extension_loaded('gd')) {
-            return false;
-        }
-
-        try {
-            $maxWidth = 1920;
-            $maxHeight = 1920;
-            $quality = 85;
-
-            // Créer l'image selon le type
-            $image = match($extension) {
-                'jpg', 'jpeg' => imagecreatefromjpeg($imagePath),
-                'png' => imagecreatefrompng($imagePath),
-                'gif' => imagecreatefromgif($imagePath),
-                'webp' => function_exists('imagecreatefromwebp') ? imagecreatefromwebp($imagePath) : false,
-                'bmp' => function_exists('imagecreatefrombmp') ? imagecreatefrombmp($imagePath) : false,
-                default => false
-            };
-
-            if ($image === false) {
-                return false;
-            }
-
-            $width = imagesx($image);
-            $height = imagesy($image);
-
-            // Redimensionner si nécessaire
-            if ($width > $maxWidth || $height > $maxHeight) {
-                $ratio = min($maxWidth / $width, $maxHeight / $height);
-                $newWidth = (int)($width * $ratio);
-                $newHeight = (int)($height * $ratio);
-                
-                $newImage = imagecreatetruecolor($newWidth, $newHeight);
-                
-                // Préserver la transparence pour PNG et GIF
-                if ($extension === 'png' || $extension === 'gif') {
-                    imagealphablending($newImage, false);
-                    imagesavealpha($newImage, true);
-                    $transparent = imagecolorallocatealpha($newImage, 255, 255, 255, 127);
-                    imagefilledrectangle($newImage, 0, 0, $newWidth, $newHeight, $transparent);
-                }
-                
-                imagecopyresampled($newImage, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-                imagedestroy($image);
-                $image = $newImage;
-                $width = $newWidth;
-                $height = $newHeight;
-            }
-
-            // Capturer la sortie dans un buffer
-            ob_start();
-            
-            match($extension) {
-                'jpg', 'jpeg' => imagejpeg($image, null, $quality),
-                'png' => imagepng($image, null, 9),
-                'gif' => imagegif($image),
-                'webp' => function_exists('imagewebp') ? imagewebp($image, null, $quality) : imagejpeg($image, null, $quality),
-                'bmp' => imagejpeg($image, null, $quality), // Convertir BMP en JPEG
-                default => imagejpeg($image, null, $quality)
-            };
-            
-            $compressedData = ob_get_contents();
-            ob_end_clean();
-            imagedestroy($image);
-
-            return $compressedData;
-        } catch (\Exception $e) {
-            return false;
         }
     }
 
@@ -286,7 +204,6 @@ class DashboardController extends Controller
             abort(403);
         }
 
-        // Gérer les images différemment
         if ($file->file_category === 'image') {
             return $this->downloadImage($file);
         }
@@ -310,7 +227,12 @@ class DashboardController extends Controller
             $fileName = pathinfo($fileName, PATHINFO_FILENAME) . '.txt';
         }
 
-        $mimeTypes = ['txt' => 'text/plain; charset=utf-8', 'md' => 'text/markdown; charset=utf-8', 'rtf' => 'application/rtf; charset=utf-8', 'doc' => 'text/plain; charset=utf-8'];
+        $mimeTypes = [
+            'txt' => 'text/plain; charset=utf-8',
+            'md' => 'text/markdown; charset=utf-8',
+            'rtf' => 'application/rtf; charset=utf-8',
+            'doc' => 'text/plain; charset=utf-8'
+        ];
         if (!mb_check_encoding($decryptedContent, 'UTF-8')) {
             $decryptedContent = mb_convert_encoding($decryptedContent, 'UTF-8', 'auto');
         }
@@ -329,13 +251,7 @@ class DashboardController extends Controller
         try {
             $decryptedContent = (new EncryptionService())->decryptImage($file->encrypted_content, $file->getDecryptionKey(), $file->iv);
             
-            // Vérifier que le contenu déchiffré n'est pas vide
-            if (empty($decryptedContent)) {
-                return redirect()->route('dashboard')->with('error', 'Le contenu déchiffré est vide.');
-            }
-            
-            // Vérifier que le contenu a une taille raisonnable
-            if (strlen($decryptedContent) < 100) {
+            if (empty($decryptedContent) || strlen($decryptedContent) < 100) {
                 return redirect()->route('dashboard')->with('error', 'Le contenu déchiffré semble invalide.');
             }
         } catch (\Exception $e) {
@@ -353,7 +269,6 @@ class DashboardController extends Controller
             'svg' => 'image/svg+xml'
         ];
 
-        // S'assurer que le contenu est bien binaire (pas de conversion UTF-8)
         return response($decryptedContent, 200, [
             'Content-Type' => $mimeTypes[$extension] ?? 'image/jpeg',
             'Content-Disposition' => 'attachment; filename="' . $file->original_name . '"',
@@ -362,31 +277,6 @@ class DashboardController extends Controller
             'Cache-Control' => 'no-cache, must-revalidate',
             'Pragma' => 'no-cache'
         ]);
-    }
-
-    private function downloadAsDocx($content, $originalName)
-    {
-        try {
-            $phpWord = new \PhpOffice\PhpWord\PhpWord();
-            $section = $phpWord->addSection();
-            foreach (explode("\n", $content) as $line) {
-                trim($line) ? $section->addText($line) : $section->addTextBreak();
-            }
-            $tempFile = tempnam(sys_get_temp_dir(), 'docx_');
-            \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007')->save($tempFile);
-            $fileContent = file_get_contents($tempFile);
-            @unlink($tempFile);
-            return response($fileContent, 200)
-                ->header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-                ->header('Content-Disposition', 'attachment; filename="' . $originalName . '"')
-                ->header('Content-Transfer-Encoding', 'binary');
-        } catch (\Exception $e) {
-            $fileName = pathinfo($originalName, PATHINFO_FILENAME) . '.txt';
-            if (substr($content, 0, 3) !== "\xEF\xBB\xBF") $content = "\xEF\xBB\xBF" . $content;
-            return response($content, 200)
-                ->header('Content-Type', 'text/plain; charset=utf-8')
-                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
-        }
     }
 
     public function downloadEncrypted(EncryptedFile $file)
@@ -399,16 +289,12 @@ class DashboardController extends Controller
             return redirect()->route('dashboard')->with('error', 'Le téléchargement chiffré est réservé aux images.');
         }
 
-        // Télécharger la version chiffrée (l'image chiffrée mais qui reste une image valide)
-        // Le contenu stocké est déjà une image chiffrée mais avec format préservé
         $encryptedBinary = base64_decode($file->encrypted_content, true);
         if ($encryptedBinary === false) {
             return redirect()->route('dashboard')->with('error', 'Impossible de récupérer le contenu chiffré.');
         }
 
         $extension = strtolower($file->file_type);
-        
-        // Nom du fichier avec extension originale (l'image chiffrée reste une image valide)
         $fileName = pathinfo($file->original_name, PATHINFO_FILENAME) . '_encrypted.' . $extension;
         
         $mimeTypes = [
@@ -421,7 +307,6 @@ class DashboardController extends Controller
             'svg' => 'image/svg+xml'
         ];
 
-        // Retourner l'image chiffrée (qui est déjà une image valide grâce à notre algorithme)
         return response($encryptedBinary, 200, [
             'Content-Type' => $mimeTypes[$extension] ?? 'image/jpeg',
             'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
@@ -432,98 +317,16 @@ class DashboardController extends Controller
         ]);
     }
 
-    private function downloadAsPdf($content, $originalName)
-    {
-        try {
-            $content = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', mb_convert_encoding($content, 'UTF-8', 'UTF-8'));
-            $fpdfClass = class_exists('FPDF') ? 'FPDF' : (class_exists('\FPDF') ? '\FPDF' : null);
-            
-            if ($fpdfClass) {
-                try {
-                    $pdf = new $fpdfClass();
-                    $pdf->SetCreator('SmartDataVault');
-                    $pdf->SetAuthor('SmartDataVault');
-                    $pdf->SetTitle('Document déchiffré');
-                    $pdf->AddPage();
-                    $pdf->SetFont('Arial', '', 12);
-                    $pdf->SetMargins(20, 20, 20);
-                    foreach (explode("\n", $content) as $line) {
-                        trim($line) ? $pdf->MultiCell(0, 8, @mb_convert_encoding($line, 'ISO-8859-1', 'UTF-8') ?: $line, 0, 'L') : $pdf->Ln(5);
-                    }
-                    if ($pdfOutput = $pdf->Output('', 'S')) {
-                        return response($pdfOutput, 200)->header('Content-Type', 'application/pdf')->header('Content-Disposition', 'attachment; filename="' . $originalName . '"')->header('Content-Transfer-Encoding', 'binary');
-                    }
-                } catch (\Exception $e) {
-                    \Log::error('Erreur FPDF: ' . $e->getMessage());
-                }
-            }
-            
-            if (class_exists('TCPDF')) {
-                $pdf = new \TCPDF();
-                $pdf->SetCreator('SmartDataVault');
-                $pdf->SetAuthor('SmartDataVault');
-                $pdf->SetTitle('Document déchiffré');
-                $pdf->AddPage();
-                foreach (explode("\n", $content) as $line) {
-                    trim($line) ? $pdf->Write(0, $line, '', 0, 'L', true, 0, false, false, 0) : $pdf->Ln(5);
-                }
-                return response($pdf->Output('', 'S'), 200)->header('Content-Type', 'application/pdf')->header('Content-Disposition', 'attachment; filename="' . $originalName . '"')->header('Content-Transfer-Encoding', 'binary');
-            }
-            
-            return response($this->createSimplePdf($content), 200)->header('Content-Type', 'application/pdf')->header('Content-Disposition', 'attachment; filename="' . $originalName . '"')->header('Content-Transfer-Encoding', 'binary');
-        } catch (\Exception $e) {
-            $fileName = pathinfo($originalName, PATHINFO_FILENAME) . '.txt';
-            if (substr($content, 0, 3) !== "\xEF\xBB\xBF") $content = "\xEF\xBB\xBF" . $content;
-            return response($content, 200)->header('Content-Type', 'text/plain; charset=utf-8')->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
-        }
-    }
-
-    private function createSimplePdf($text)
-    {
-        $lines = array_filter(array_map('trim', explode("\n", preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', mb_convert_encoding($text, 'UTF-8', 'UTF-8')))), fn($l) => $l !== '') ?: ['Document vide'];
-        $pdfParts = [];
-        $xref = [];
-        $pdfParts[] = "%PDF-1.4\n";
-        $currentOffset = strlen($pdfParts[0]);
-        $pdfParts[] = ($catalog = "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
-        $xref[1] = $currentOffset;
-        $currentOffset += strlen($catalog);
-        $pdfParts[] = ($pages = "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
-        $xref[2] = $currentOffset;
-        $currentOffset += strlen($pages);
-        $pdfParts[] = ($pageObj = "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> >>\nendobj\n");
-        $xref[3] = $currentOffset;
-        $currentOffset += strlen($pageObj);
-        
-        $pageContent = "";
-        $y = 750;
-        foreach ($lines as $line) {
-            if ($y < 50) break;
-            foreach (str_split($line, 70) as $wrappedLine) {
-                if ($y < 50) break;
-                $wrappedLine = str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], @mb_convert_encoding($wrappedLine, 'ISO-8859-1', 'UTF-8') ?: $line);
-                $pageContent .= "BT\n/F1 12 Tf\n50 {$y} Td\n({$wrappedLine}) Tj\nET\n";
-                $y -= 14;
-            }
-        }
-        if (empty($pageContent)) $pageContent = "BT\n/F1 12 Tf\n50 750 Td\n(Document vide) Tj\nET\n";
-        
-        $pdfParts[] = ($contentsObj = "4 0 obj\n<< /Length " . strlen($pageContent) . " >>\nstream\n" . $pageContent . "\nendstream\nendobj\n");
-        $xref[4] = $currentOffset;
-        $pdfContent = implode('', $pdfParts);
-        $xrefOffset = strlen($pdfContent);
-        $pdfContent .= "xref\n0 5\n0000000000 65535 f \n";
-        foreach ($xref as $objOffset) $pdfContent .= sprintf("%010d 00000 n \n", $objOffset);
-        $pdfContent .= "trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n" . $xrefOffset . "\n%%EOF\n";
-        return $pdfContent;
-    }
-
     public function destroy(EncryptedFile $file)
     {
-        if ($file->user_id !== Auth::id()) abort(403);
+        if ($file->user_id !== Auth::id()) {
+            abort(403);
+        }
+        
         $fileName = $file->original_name;
         Auth::user()->updateStatsAfterDelete($file->file_size);
         $file->delete();
+        
         return redirect()->route('dashboard')->with('delete', 'Fichier "' . $fileName . '" supprimé définitivement !');
     }
 }

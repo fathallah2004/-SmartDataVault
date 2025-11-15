@@ -27,5 +27,3 @@ class TwoFactorConfirmationController extends Controller
         return redirect()->route('profile.edit')->with('status', 'two-factor-authentication-confirmed');
     }
 }
-
-

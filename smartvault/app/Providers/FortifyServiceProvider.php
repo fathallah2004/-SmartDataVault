@@ -40,7 +40,6 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::redirectUserForTwoFactorAuthenticationUsing(RedirectIfTwoFactorAuthenticatable::class);
 
-        // Register custom two-factor challenge view
         Fortify::twoFactorChallengeView(function () {
             return view('auth.two-factor-challenge');
         });
